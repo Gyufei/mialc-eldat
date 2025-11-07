@@ -93,7 +93,7 @@ export default function ClaimBoxs() {
               </div>
               <div className="flex flex-col gap-3 md:w-auto md:flex-row md:gap-4">
                 <button
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border border-border bg-transparent px-4 py-2 text-sm font-medium text-secondary transition-all duration-200 hover:border-primary/60 hover:text-primary"
+                  className="inline-flex items-center border-none justify-center gap-2 whitespace-nowrap rounded-full cursor-pointer bg-transparent px-4 py-2 text-sm font-medium text-secondary transition-all duration-200 hover:border-primary/60 hover:text-primary"
                   type="button"
                 >
                   <RotateCcw className="h-4 w-4" />
@@ -112,7 +112,7 @@ export default function ClaimBoxs() {
 
           <div className="mt-4 flex w-full justify-center">
             <button
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border border-text-disabled bg-transparent px-4 py-2 text-sm font-medium text-secondary transition-colors duration-200 hover:border-primary/60 hover:text-primary"
+              className="inline-flex border-none cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full border-text-disabled bg-transparent px-4 py-2 text-sm font-medium text-secondary transition-colors duration-200 hover:border-primary/60 hover:text-primary"
               type="button"
             >
               <Eye className="h-4 w-4" />
