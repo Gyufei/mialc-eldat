@@ -1,11 +1,20 @@
-import { VolumeX } from 'lucide-react';
-import Image from 'next/image';
+import { useLogin, usePrivy } from '@privy-io/react-auth';
 import { motion } from 'framer-motion';
-import MonadWhiteLogo from './icon/monad-white-logo';
-import { useLogin } from '@privy-io/react-auth';
-import { useState } from 'react';
+import { VolumeX } from 'lucide-react';
 
-export default function Login() {
+import { useEffect, useRef, useState } from 'react';
+
+import Image from 'next/image';
+
+import MonadWhiteLogo from './icon/monad-white-logo';
+
+export default function Login({
+  isLogging,
+  onLoggingChange,
+}: {
+  isLogging: boolean;
+  onLoggingChange: (bool: boolean) => void;
+}) {
   const titleLine1 = ['Enter', 'the', 'MON'];
   const titleLine2 = ['Claim', 'Portal'];
   const subtitleWords = ['Create', 'an', 'account', 'to', 'discover', 'your', 'status'];
@@ -17,21 +26,50 @@ export default function Login() {
   const buttonDelay = Math.max(lastEndTitle1, lastEndTitle2, lastEndSubtitle) + 0.2;
   const volumeDelay = buttonDelay + 0.2;
 
+  const { authenticated } = usePrivy();
   const { login } = useLogin();
-  const [isLoading, setIsLoading] = useState(false);
+
+  const video1Ref = useRef<HTMLVideoElement>(null);
+  const video2Ref = useRef<HTMLVideoElement>(null);
 
   async function handleLogin() {
-    setIsLoading(true);
+    onLoggingChange(true);
     await login({
       walletChainType: 'ethereum-only',
       loginMethods: ['wallet'],
     });
-    setIsLoading(false);
   }
 
+  function handleVideo2Play() {
+    if (video1Ref.current) {
+      video1Ref.current.style.display = 'none';
+    }
+    if (video2Ref.current) {
+      video2Ref.current.style.display = 'block';
+      video2Ref.current.play();
+      setTimeout(() => {
+        onLoggingChange(false);
+      }, 2200);
+    }
+  }
+
+  function handleVideo2Ended() {
+    onLoggingChange(false);
+  }
+
+  useEffect(() => {
+    if (isLogging && authenticated) {
+      handleVideo2Play();
+    }
+  }, [authenticated, isLogging]);
+
   return (
-    <main className="relative flex h-dvh flex-col items-center justify-center bg-background px-6" style={{ paddingTop: 0 }}>
+    <main
+      className="relative flex h-dvh flex-col items-center justify-center bg-background px-6"
+      style={{ paddingTop: 0 }}
+    >
       <video
+        ref={video1Ref}
         autoPlay={true}
         muted={true}
         disablePictureInPicture={true}
@@ -51,10 +89,17 @@ export default function Login() {
           sizes="100vw"
           decoding="async"
           loading="lazy"
-          style={{ position: 'absolute', height: '100%', width: '100%', inset: '0px', color: 'transparent' }}
+          style={{
+            position: 'absolute',
+            height: '100%',
+            width: '100%',
+            inset: '0px',
+            color: 'transparent',
+          }}
         />
       </video>
       <video
+        ref={video2Ref}
         muted={true}
         disablePictureInPicture={true}
         disableRemotePlayback={true}
@@ -63,6 +108,7 @@ export default function Login() {
         preload="auto"
         className="absolute inset-0 h-full w-full object-cover"
         style={{ display: 'none' }}
+        onEnded={handleVideo2Ended}
       >
         <source src="/animations/landing/enter-portal.mp4" type="video/mp4" />
         <Image
@@ -73,13 +119,23 @@ export default function Login() {
           sizes="100vw"
           decoding="async"
           loading="lazy"
-          style={{ position: 'absolute', height: '100%', width: '100%', inset: '0px', color: 'transparent' }}
+          style={{
+            position: 'absolute',
+            height: '100%',
+            width: '100%',
+            inset: '0px',
+            color: 'transparent',
+          }}
         />
       </video>
       <div className="absolute inset-0 bg-black opacity-10" />
       <div className="relative z-10 flex w-full max-w-3xl flex-col items-center">
         <div style={{ opacity: 1, filter: 'blur(0px)', transform: 'none' }}>
-          <span className="inline-flex shrink-0" draggable="false" style={{ width: 36, height: 36 }}>
+          <span
+            className="inline-flex shrink-0"
+            draggable="false"
+            style={{ width: 36, height: 36 }}
+          >
             <span>
               <MonadWhiteLogo />
             </span>
@@ -107,7 +163,11 @@ export default function Login() {
                 className="inline-block font-britti-sans"
                 initial={{ opacity: 0, filter: 'blur(8px)' }}
                 animate={{ opacity: 1, filter: 'blur(0px)' }}
-                transition={{ duration: wordDuration, delay: wordDelay * (index + titleLine1.length), ease: 'easeOut' }}
+                transition={{
+                  duration: wordDuration,
+                  delay: wordDelay * (index + titleLine1.length),
+                  ease: 'easeOut',
+                }}
               >
                 {word}
               </motion.span>
@@ -137,7 +197,9 @@ export default function Login() {
             onClick={handleLogin}
             className="inline-flex items-center justify-center gap-2 whitespace-nowrap focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer font-britti-sans transition-all duration-200 active:scale-[0.98] disabled:active:scale-100 relative text-white text-sm font-medium leading-5 rounded-full bg-radial-primary [&>*]:relative [&>*]:z-10 h-9.5 px-4 py-2 shadow-login-button"
           >
-            <span className="w-full flex items-center justify-center gap-2">{isLoading ? 'Signing in...' : 'Sign in'}</span>
+            <span className="w-full flex items-center justify-center gap-2">
+              {isLogging ? 'Signing in...' : 'Sign in'}
+            </span>
           </button>
         </motion.div>
         <motion.div

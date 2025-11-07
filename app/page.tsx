@@ -3,6 +3,8 @@
 import { usePrivy } from '@privy-io/react-auth';
 import { LoaderCircle, Save } from 'lucide-react';
 
+import { useState } from 'react';
+
 import Image from 'next/image';
 
 import ClaimBoxs from './claim-boxs';
@@ -13,6 +15,7 @@ import Profile from './profile';
 
 export default function Home() {
   const { ready, authenticated } = usePrivy();
+  const [isLogging, setIsLogging] = useState(false);
 
   if (!ready) {
     return (
@@ -22,8 +25,8 @@ export default function Home() {
     );
   }
 
-  if (!authenticated) {
-    return <Login />;
+  if (!authenticated || isLogging) {
+    return <Login isLogging={isLogging} onLoggingChange={setIsLogging} />;
   }
 
   return (
