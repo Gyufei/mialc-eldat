@@ -1,11 +1,20 @@
-import { VolumeX } from 'lucide-react';
-import Image from 'next/image';
-import { motion } from 'framer-motion';
-import MonadWhiteLogo from './icon/monad-white-logo';
+"use client";
+
 import { useLogin } from '@privy-io/react-auth';
+import { motion } from 'framer-motion';
+import { Loader2, VolumeX } from 'lucide-react';
+
 import { useState } from 'react';
 
-export default function Login() {
+import Image from 'next/image';
+
+import MonadWhiteLogo from './icon/monad-white-logo';
+
+type LoginProps = {
+  onLoginSuccess?: () => void;
+};
+
+export default function Login({ onLoginSuccess }: LoginProps) {
   const titleLine1 = ['Enter', 'the', 'MON'];
   const titleLine2 = ['Claim', 'Portal'];
   const subtitleWords = ['Create', 'an', 'account', 'to', 'discover', 'your', 'status'];
@@ -22,15 +31,24 @@ export default function Login() {
 
   async function handleLogin() {
     setIsLoading(true);
-    await login({
-      walletChainType: 'ethereum-only',
-      loginMethods: ['wallet'],
-    });
-    setIsLoading(false);
+    try {
+      await login({
+        walletChainType: 'ethereum-only',
+        loginMethods: ['wallet'],
+      });
+      onLoginSuccess?.();
+    } catch (error) {
+      console.error('Login failed', error);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
-    <main className="relative flex h-dvh flex-col items-center justify-center bg-background px-6" style={{ paddingTop: 0 }}>
+    <main
+      className="relative flex h-dvh flex-col items-center justify-center bg-background px-6"
+      style={{ paddingTop: 0 }}
+    >
       <video
         autoPlay={true}
         muted={true}
@@ -51,35 +69,23 @@ export default function Login() {
           sizes="100vw"
           decoding="async"
           loading="lazy"
-          style={{ position: 'absolute', height: '100%', width: '100%', inset: '0px', color: 'transparent' }}
-        />
-      </video>
-      <video
-        muted={true}
-        disablePictureInPicture={true}
-        disableRemotePlayback={true}
-        playsInline={true}
-        poster="/background.png"
-        preload="auto"
-        className="absolute inset-0 h-full w-full object-cover"
-        style={{ display: 'none' }}
-      >
-        <source src="/animations/landing/enter-portal.mp4" type="video/mp4" />
-        <Image
-          src="/background.png"
-          alt="Background"
-          fill
-          className="object-cover object-center absolute inset-0"
-          sizes="100vw"
-          decoding="async"
-          loading="lazy"
-          style={{ position: 'absolute', height: '100%', width: '100%', inset: '0px', color: 'transparent' }}
+          style={{
+            position: 'absolute',
+            height: '100%',
+            width: '100%',
+            inset: '0px',
+            color: 'transparent',
+          }}
         />
       </video>
       <div className="absolute inset-0 bg-black opacity-10" />
       <div className="relative z-10 flex w-full max-w-3xl flex-col items-center">
         <div style={{ opacity: 1, filter: 'blur(0px)', transform: 'none' }}>
-          <span className="inline-flex shrink-0" draggable="false" style={{ width: 36, height: 36 }}>
+          <span
+            className="inline-flex shrink-0"
+            draggable="false"
+            style={{ width: 36, height: 36 }}
+          >
             <span>
               <MonadWhiteLogo />
             </span>
@@ -107,7 +113,11 @@ export default function Login() {
                 className="inline-block font-britti-sans"
                 initial={{ opacity: 0, filter: 'blur(8px)' }}
                 animate={{ opacity: 1, filter: 'blur(0px)' }}
-                transition={{ duration: wordDuration, delay: wordDelay * (index + titleLine1.length), ease: 'easeOut' }}
+                transition={{
+                  duration: wordDuration,
+                  delay: wordDelay * (index + titleLine1.length),
+                  ease: 'easeOut',
+                }}
               >
                 {word}
               </motion.span>
@@ -137,7 +147,16 @@ export default function Login() {
             onClick={handleLogin}
             className="inline-flex items-center justify-center gap-2 whitespace-nowrap focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer font-britti-sans transition-all duration-200 active:scale-[0.98] disabled:active:scale-100 relative text-white text-sm font-medium leading-5 rounded-full bg-radial-primary [&>*]:relative [&>*]:z-10 h-9.5 px-4 py-2 shadow-login-button"
           >
-            <span className="w-full flex items-center justify-center gap-2">{isLoading ? 'Signing in...' : 'Sign in'}</span>
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="w-full flex items-center justify-center gap-2">
+                  {'Signing in...'}
+                </span>
+              </>
+            ) : (
+              <span className="w-full flex items-center justify-center gap-2">{'Sign in'}</span>
+            )}
           </button>
         </motion.div>
         <motion.div
