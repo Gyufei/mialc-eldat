@@ -2,7 +2,7 @@ import { useLogin, usePrivy } from '@privy-io/react-auth';
 import { motion } from 'framer-motion';
 import { VolumeX } from 'lucide-react';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 import Image from 'next/image';
 

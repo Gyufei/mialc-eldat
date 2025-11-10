@@ -1,8 +1,5 @@
 import { usePrivy } from '@privy-io/react-auth';
-import { useRive } from '@rive-app/react-canvas';
 import { Share2 } from 'lucide-react';
-
-import { useEffect } from 'react';
 
 import ClaimWallet from './claim-wallet';
 
@@ -16,33 +13,10 @@ import MonadGray from './icon/monad-gray';
 import SolanaWalletConnected from './solana-wallet-connected';
 import TelegramConnected from './telegram-connected';
 import TwitterConnected from './twitter-connected';
+import StrengthIndicator from './strength-indicator';
 
 export default function Profile() {
   const { user } = usePrivy();
-
-  const { rive, RiveComponent } = useRive({
-    src: '/riv/strength-indicator_v1.riv',
-    stateMachines: ['State Machine 1'],
-    autoBind: true,
-    autoplay: true,
-  });
-
-  const stateMachineInputs = rive?.stateMachineInputs('State Machine 1');
-
-  useEffect(() => {
-    if (stateMachineInputs) {
-      try {
-        const item = stateMachineInputs?.find(
-          (item: { name: string; value: number | boolean }) => 'MouseFollow' === item.name
-        );
-        if (item) {
-          item.value = true;
-        }
-      } catch (error) {
-        console.error('Failed to enable MouseFollow:', error);
-      }
-    }
-  }, [stateMachineInputs]);
 
   const userWallet = user?.wallet?.address;
 
@@ -82,9 +56,7 @@ export default function Profile() {
                     NOT ELIGIBLE
                   </div>
                   <div className="pointer-events-none md:pointer-events-auto w-full h-full">
-                    <div className="" style={{ width: '100%', height: '100%' }}>
-                      <RiveComponent />
-                    </div>
+                    <StrengthIndicator style={{ width: '100%', height: '100%' }} />
                   </div>
                 </div>
                 <p className="text-center md:text-left text-xs lg:text-sm text-secondary">

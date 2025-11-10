@@ -1,0 +1,154 @@
+import { LoaderCircle, RotateCcw } from 'lucide-react';
+
+import { Fragment } from 'react';
+
+import Image from 'next/image';
+
+import { Button } from '@/components/ui/button';
+
+import { cn } from '@/lib/utils';
+
+export type MysteryBoxProps = {
+  amount: number;
+  day: number;
+  boxNumber: number;
+  isOpened: boolean;
+  isOpening: boolean;
+  isDisabled: boolean;
+  blurContent: boolean;
+  onOpen?: (amount: number, index: number) => void;
+  onReplay?: () => void;
+  index: number;
+};
+
+export function MysteryBox({
+  amount,
+  day,
+  boxNumber,
+  isOpened,
+  isOpening,
+  isDisabled,
+  blurContent,
+  onOpen,
+  onReplay,
+  index,
+}: MysteryBoxProps) {
+  return (
+    <div className="flex flex-col items-center">
+      <Button
+        variant="outline"
+        onClick={isOpened ? () => onOpen?.(amount, index) : onReplay}
+        disabled={isOpening || isDisabled}
+        className="flex flex-col w-full h-full bg-transparent! items-center justify-center border-0 hover:bg-transparent rounded-none p-0 gap-0 m-9 group"
+      >
+        <div className="relative mb-9">
+          {!isOpened && (
+            <Fragment>
+              <div
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full animate-box-glow-1 w-full h-full"
+                style={{
+                  background:
+                    'radial-gradient(circle, rgba(55, 30, 225, 1) 0%, rgba(55, 30, 225, 0.9) 22%, rgba(55, 30, 225, 0.8) 55%, transparent 100%)',
+                  filter: 'blur(40px)',
+                  zIndex: 0,
+                }}
+              />
+              <div
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full animate-box-glow-2 w-full h-full"
+                style={{
+                  background:
+                    'radial-gradient(circle, rgba(0, 69, 154, 1) 0%, rgba(0, 69, 154, 0.9) 22%, rgba(0, 69, 154, 0.8) 55%, transparent 100%)',
+                  filter: 'blur(40px)',
+                  zIndex: 1,
+                }}
+              />
+              <div
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 w-full h-full"
+                style={{
+                  background:
+                    'radial-gradient(circle, rgba(38, 106, 255, 1) 0%, rgba(38, 106, 255, 1) 30%, rgba(38, 106, 255, 1) 50%, rgba(38, 106, 255, 1) 70%, transparent 100%)',
+                  filter: 'blur(43px)',
+                  zIndex: 3,
+                }}
+              />
+            </Fragment>
+          )}
+
+          <Image
+            src={
+              isOpened
+                ? `/animations/empty-tier-${amount < 9_999 ? 1 : amount < 39_999 ? 2 : 3}.png`
+                : '/animations/unopened-box_v2.gif'
+            }
+            alt="Mystery Box"
+            width={160}
+            height={160}
+            priority
+            className={cn('cursor-pointer relative z-10', {
+              'animate-box-bounce': !isOpened,
+              'scale-[1.7]': isOpened,
+            })}
+            unoptimized
+          />
+
+          {!isOpened && (
+            <Image
+              src="/animations/box-sparkles.gif"
+              alt="Sparkles"
+              width={170}
+              height={170}
+              className="absolute top-0 left-0 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              unoptimized
+            />
+          )}
+
+          {isOpened && (
+            <div
+              className={cn(
+                'absolute inset-0 flex items-center justify-center flex-col gap-1 z-10',
+                blurContent && 'blur'
+              )}
+            >
+              <p className="font-inter text-2xl leading-none font-medium text-center">
+                {amount.toLocaleString('en-US')}
+              </p>
+              <p
+                className="text-lg leading-none font-medium text-center"
+                style={{
+                  background: 'linear-gradient(180deg, #FFF 10.63%, #775DFF 125.63%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                MON
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2 items-center">
+          <p className="text-sm font-normal text-muted-foreground">
+            Day {day} • Box #{boxNumber}
+          </p>
+
+          <div className="text-primary flex items-center gap-2 text-base font-medium justify-start h-auto px-3 py-2 group-hover:underline group-hover:text-secondary transition-all duration-200">
+            {isOpened ? (
+              <>
+                <RotateCcw className="w-4 h-4 mr-0" />
+                Replay
+              </>
+            ) : isOpening ? (
+              <>
+                <LoaderCircle className="w-4 h-4 mr-0 animate-spin" />
+                Opening...
+              </>
+            ) : (
+              'Open Box'
+            )}
+          </div>
+        </div>
+      </Button>
+    </div>
+  );
+}
