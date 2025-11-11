@@ -1,12 +1,16 @@
 import { usePrivy } from '@privy-io/react-auth';
-import { Box, Eye, Info, LucideIcon, RotateCcw, Share2 } from 'lucide-react';
+import { Box, Info, LucideIcon, RotateCcw, Share2, X } from 'lucide-react';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import dynamic from 'next/dynamic';
 
 import ClaimWallet from './claim-wallet';
 import FAQ from './faq';
 import MonadWhiteLogo from './icon/monad-white-logo';
 import { MysteryBox, MysteryBoxProps } from './mystery-box';
+
+const ClaimBoxAnimation = dynamic(() => import('./claim-box-animation'), { ssr: false });
 
 type DayBoxConfig = {
   day: number;
@@ -165,17 +169,79 @@ function DayBox({ day, label, icon: Icon, cta, onSelectDay }: DayBoxProps) {
   );
 }
 
-export default function ClaimBoxs() {
+export default function ClaimBoxes() {
   const { user } = usePrivy();
   const userWallet = user?.wallet?.address;
 
   const [selectedDay, setSelectedDay] = useState(dayBoxes[0]?.day ?? 1);
+  const [isRevealVisible, setIsRevealVisible] = useState(false);
+  const [showAnimation, setShowAnimation] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const animationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const closeReveal = useCallback(() => {
+    if (animationTimerRef.current) {
+      clearTimeout(animationTimerRef.current);
+      animationTimerRef.current = null;
+    }
+    setShowAnimation(false);
+    setIsRevealVisible(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  }, []);
+
+  const openReveal = useCallback(() => {
+    if (animationTimerRef.current) {
+      clearTimeout(animationTimerRef.current);
+      animationTimerRef.current = null;
+    }
+
+    setShowAnimation(false);
+    setIsRevealVisible(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isRevealVisible) return;
+
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      const playPromise = videoRef.current.play();
+      if (playPromise) {
+        playPromise.catch((error) => {
+          console.error('自动播放视频失败', error);
+        });
+      }
+    }
+
+    animationTimerRef.current = setTimeout(() => {
+      setShowAnimation(true);
+    }, 5000);
+
+    return () => {
+      if (animationTimerRef.current) {
+        clearTimeout(animationTimerRef.current);
+        animationTimerRef.current = null;
+      }
+    };
+  }, [isRevealVisible]);
+
+  useEffect(() => {
+    return () => {
+      if (animationTimerRef.current) {
+        clearTimeout(animationTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleOpenBox = (day: number, amount: number, index: number) => {
+    openReveal();
     console.log('[Mock] Requesting to open box', { day, amount, index });
   };
 
   const handleReplayBox = (day: number, index: number) => {
+    openReveal();
     console.log('[Mock] Requesting box replay', { day, index });
   };
 
@@ -248,7 +314,7 @@ export default function ClaimBoxs() {
                   Replays
                 </button>
                 <button
-                  className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border border-transparent bg-radial-tertiary px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 md:w-auto"
+                  className="relative inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border border-transparent bg-radial-tertiary px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 md:w-auto"
                   type="button"
                 >
                   <Share2 className="h-4 w-4" />
@@ -258,7 +324,7 @@ export default function ClaimBoxs() {
             </div>
           </div>
 
-          <div className="mt-4 flex w-full justify-center">
+          {/* <div className="mt-4 flex w-full justify-center">
             <button
               className="inline-flex border-none cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full border-text-disabled bg-transparent px-4 py-2 text-sm font-medium text-secondary transition-colors duration-200 hover:border-primary/60 hover:text-primary"
               type="button"
@@ -266,9 +332,39 @@ export default function ClaimBoxs() {
               <Eye className="h-4 w-4" />
               Show connections
             </button>
-          </div>
+          </div> */}
         </div>
       </div>
+
+      {isRevealVisible && (
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/95 transition-opacity duration-400">
+          <video
+            ref={videoRef}
+            src="/video/box-rarity-1_v2.mp4"
+            className="h-full w-full object-cover"
+            playsInline
+            muted
+            autoPlay
+            onEnded={closeReveal}
+          />
+
+          {showAnimation && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-4">
+              <div className="w-full max-w-4xl">
+                <ClaimBoxAnimation />
+              </div>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={closeReveal}
+            className="absolute right-6 top-6 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white transition hover:bg-black/80"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

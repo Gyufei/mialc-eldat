@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import Logo from './icon/logo';
-import { CircleUser, LogOut, VolumeX } from 'lucide-react';
+import { CircleUser, LogOut } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,14 +40,14 @@ export default function Header() {
               </span>
             </Link>
             <div className="flex flex-row items-center gap-4">
-              <button
+              {/* <button
                 className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer font-britti-sans transition-all duration-200 active:scale-[0.98] disabled:active:scale-100 border border-input bg-background hover:bg-accent hover:text-accent-foreground px-4 py-2 rounded-full w-8 h-8
                 "
               >
                 <span>
                   <VolumeX className="w-4 h-4" />
                 </span>
-              </button>
+              </button> */}
               <DropdownMenu>
                 <Tooltip>
                   <DropdownMenuTrigger asChild>

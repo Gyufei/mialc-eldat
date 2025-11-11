@@ -1,6 +1,6 @@
 import { useLogin, usePrivy } from '@privy-io/react-auth';
 import { motion } from 'framer-motion';
-import { VolumeX } from 'lucide-react';
+// import { VolumeX } from 'lucide-react';
 
 import { useEffect, useRef } from 'react';
 
@@ -202,7 +202,7 @@ export default function Login({
             </span>
           </button>
         </motion.div>
-        <motion.div
+        {/* <motion.div
           className="absolute -bottom-30"
           initial={{ opacity: 0, filter: 'blur(8px)' }}
           animate={{ opacity: 1, filter: 'blur(0px)' }}
@@ -214,7 +214,7 @@ export default function Login({
               TURN ON YOUR SOUND FOR THE BEST EXPERIENCE
             </span>
           </button>
-        </motion.div>
+        </motion.div> */}
       </div>
     </main>
   );
