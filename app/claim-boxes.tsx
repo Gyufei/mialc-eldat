@@ -1,168 +1,91 @@
 import { usePrivy } from '@privy-io/react-auth';
-import { Box, Info, LucideIcon, RotateCcw, Share2, X } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Box, ChevronRight, Info, Share2, X } from 'lucide-react';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import dynamic from 'next/dynamic';
+
+import useAirdrop, { AirDropDay } from '@/lib/use-airdrop';
+import { useClaim } from '@/lib/use-claim';
+import { cn } from '@/lib/utils';
 
 import ClaimWallet from './claim-wallet';
 import FAQ from './faq';
 import MonadWhiteLogo from './icon/monad-white-logo';
-import { MysteryBox, MysteryBoxProps } from './mystery-box';
+import { MysteryBox } from './mystery-box';
 
 const ClaimBoxAnimation = dynamic(() => import('./claim-box-animation'), { ssr: false });
 
-type DayBoxConfig = {
-  day: number;
-  label: string;
-  icon: LucideIcon;
-  cta: string;
-  boxes: MysteryBoxProps[];
-};
-
-type DayBoxProps = DayBoxConfig & {
+type DayBoxProps = {
+  dayData: AirDropDay;
   onSelectDay: (day: number) => void;
+  isSelected: boolean;
 };
 
-const dayBoxes: DayBoxConfig[] = [
-  {
-    day: 1,
-    label: 'Reveal opens soon',
-    icon: Box,
-    cta: '???',
-    boxes: [
-      {
-        amount: 2_500,
-        day: 1,
-        boxNumber: 1,
-        isOpened: false,
-        isOpening: false,
-        isDisabled: false,
-        blurContent: false,
-        index: 0,
-      },
-      {
-        amount: 7_500,
-        day: 1,
-        boxNumber: 2,
-        isOpened: true,
-        isOpening: false,
-        isDisabled: false,
-        blurContent: false,
-        index: 1,
-      },
-      {
-        amount: 15_000,
-        day: 1,
-        boxNumber: 3,
-        isOpened: true,
-        isOpening: false,
-        isDisabled: false,
-        blurContent: true,
-        index: 2,
-      },
-    ],
-  },
-  {
-    day: 2,
-    label: 'Stay tuned',
-    icon: Box,
-    cta: '???',
-    boxes: [
-      {
-        amount: 10_000,
-        day: 2,
-        boxNumber: 1,
-        isOpened: false,
-        isOpening: true,
-        isDisabled: false,
-        blurContent: false,
-        index: 0,
-      },
-      {
-        amount: 24_000,
-        day: 2,
-        boxNumber: 2,
-        isOpened: false,
-        isOpening: false,
-        isDisabled: true,
-        blurContent: false,
-        index: 1,
-      },
-      {
-        amount: 32_500,
-        day: 2,
-        boxNumber: 3,
-        isOpened: true,
-        isOpening: false,
-        isDisabled: false,
-        blurContent: false,
-        index: 2,
-      },
-    ],
-  },
-  {
-    day: 3,
-    label: 'Unlock your drop',
-    icon: Box,
-    cta: '???',
-    boxes: [
-      {
-        amount: 8_000,
-        day: 3,
-        boxNumber: 1,
-        isOpened: false,
-        isOpening: false,
-        isDisabled: false,
-        blurContent: false,
-        index: 0,
-      },
-      {
-        amount: 19_500,
-        day: 3,
-        boxNumber: 2,
-        isOpened: true,
-        isOpening: false,
-        isDisabled: false,
-        blurContent: false,
-        index: 1,
-      },
-      {
-        amount: 41_200,
-        day: 3,
-        boxNumber: 3,
-        isOpened: true,
-        isOpening: false,
-        isDisabled: false,
-        blurContent: false,
-        index: 2,
-      },
-    ],
-  },
-];
+function DayBox({ dayData, isSelected, onSelectDay }: DayBoxProps) {
+  const { boxes } = dayData;
 
-function DayBox({ day, label, icon: Icon, cta, onSelectDay }: DayBoxProps) {
   const handleSelectDay = () => {
-    onSelectDay(day);
+    if (!dayData.is_active) {
+      return;
+    }
+    onSelectDay(dayData.day_num);
   };
+
+  const openedBoxes = boxes.filter((box) => box.is_opened).length;
+  const totalBoxes = boxes.length;
+
+  const dayLabelClass = [
+    'text-[11px] uppercase tracking-[0.25em]',
+    isSelected ? 'text-primary opacity-80' : 'text-tertiary',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const dayNumberClass = [
+    'text-xl font-semibold leading-5',
+    isSelected ? 'text-white' : dayData.is_active ? 'text-primary' : 'text-secondary',
+    dayData.is_active ? '' : 'opacity-70',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div className="flex w-full flex-col items-center gap-6 text-center md:flex-1">
       <div className="flex flex-col items-center gap-3">
-        <div className="flex h-16 w-16 flex-col items-center justify-center rounded-full border border-border bg-muted/10 shadow-[inset_0_2px_12px_rgba(114,108,169,0.35)]">
-          <span className="text-[11px] uppercase tracking-[0.25em] text-tertiary">Day</span>
-          <span className="text-xl font-semibold leading-5 text-primary">{day}</span>
-        </div>
-        <div className="text-xs font-medium uppercase tracking-[0.18em] text-secondary/70">
-          {label}
+        <div
+          className={cn(
+            'flex h-20 w-20 flex-col items-center justify-center rounded-full border-4 bg-black/30 backdrop-blur-sm transition-all duration-300',
+            dayData.is_active
+              ? 'border-[#7D6BF1] shadow-[inset_0_2px_18px_rgba(114,108,169,0.35)]'
+              : 'border-border'
+          )}
+        >
+          <span className={dayLabelClass}>Day</span>
+          <span className={dayNumberClass}>{dayData.day_num}</span>
         </div>
         <button
           onClick={handleSelectDay}
-          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border border-border bg-transparent px-4 py-2 text-sm font-medium text-secondary transition-colors duration-200 hover:border-primary/60 hover:text-primary"
           type="button"
+          disabled={!dayData.is_active}
+          className={cn(
+            'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border px-5 py-2 text-sm font-medium transition-colors duration-200 group',
+            dayData.is_active
+              ? 'text-[#5C5B5E] cursor-pointer hover:text-primary shadow-[inset_0_2px_18px_rgba(114,108,169,0.35)]'
+              : 'text-tertiary cursor-not-allowed opacity-60'
+          )}
         >
-          <Icon className="h-4 w-4" />
-          {cta}
+          <Box className="h-4 w-4" />
+          {dayData.is_active ? (
+            <>
+              <span className="text-white">{openedBoxes}</span>
+              <span className="text-[#5C5B5E] group-hover:text-white">/ {totalBoxes}</span>
+            </>
+          ) : (
+            <span className="text-[#5C5B5E]">?</span>
+          )}
+          <ChevronRight className="h-4 w-4" />
         </button>
       </div>
     </div>
@@ -173,11 +96,50 @@ export default function ClaimBoxes() {
   const { user } = usePrivy();
   const userWallet = user?.wallet?.address;
 
-  const [selectedDay, setSelectedDay] = useState(dayBoxes[0]?.day ?? 1);
+  const [onOpeningBoxId, setOnOpeningBoxId] = useState<number | null>(null);
+  const [selectedDay, setSelectedDay] = useState<number>(1);
   const [isRevealVisible, setIsRevealVisible] = useState(false);
   const [showAnimation, setShowAnimation] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const animationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { data: airDropData } = useAirdrop();
+
+  const dayBoxes = useMemo<AirDropDay[]>(() => {
+    if (!airDropData?.days?.length) {
+      return [];
+    }
+
+    return airDropData.days;
+  }, [airDropData]);
+
+  const { mutate: claimBox, isSuccess, isError } = useClaim();
+
+  const availableDayNumbers = dayBoxes.map((dayBox) => dayBox.day_num);
+
+  const preferredCurrentDay =
+    airDropData?.current_day && availableDayNumbers.includes(airDropData.current_day)
+      ? airDropData.current_day
+      : undefined;
+
+  const activeDay =
+    (availableDayNumbers.includes(selectedDay) ? selectedDay : preferredCurrentDay) ??
+    dayBoxes[0]?.day_num ??
+    1;
+
+  const totalRevealedMon = dayBoxes.reduce((total, day) => {
+    const dayTotal = day.boxes.reduce((sum, box) => {
+      if (!box.is_opened) {
+        return sum;
+      }
+
+      return sum + box.amount;
+    }, 0);
+
+    return total + dayTotal;
+  }, 0);
+
+  const selectedDayBoxes = dayBoxes.find((dayBox) => dayBox.day_num === activeDay);
 
   const closeReveal = useCallback(() => {
     if (animationTimerRef.current) {
@@ -190,6 +152,7 @@ export default function ClaimBoxes() {
       videoRef.current.pause();
       videoRef.current.currentTime = 0;
     }
+    setOnOpeningBoxId(null);
   }, []);
 
   const openReveal = useCallback(() => {
@@ -235,18 +198,39 @@ export default function ClaimBoxes() {
     };
   }, []);
 
-  const handleOpenBox = (day: number, amount: number, index: number) => {
+  useEffect(() => {
+    if (isSuccess) {
+      setTimeout(() => {
+        closeReveal();
+      }, 100);
+    }
+  }, [closeReveal, isSuccess]);
+
+  useEffect(() => {
+    if (isError) {
+      setTimeout(() => {
+        closeReveal();
+      }, 100);
+    }
+  }, [isError]);
+
+  const handleOpenBox = (boxId: number) => {
     openReveal();
-    console.log('[Mock] Requesting to open box', { day, amount, index });
+    claimBox({ boxId });
+    setOnOpeningBoxId(boxId);
   };
 
-  const handleReplayBox = (day: number, index: number) => {
+  const handleReplayBox = (_boxId: number) => {
     openReveal();
-    console.log('[Mock] Requesting box replay', { day, index });
   };
 
   return (
-    <div className="flex w-full flex-1 px-4 pb-8 pt-4.5">
+    <motion.div
+      className="flex w-full flex-1 px-4 pb-8 pt-4.5"
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+    >
       <div
         className="w-full max-w-6xl px-4 py-8 lg:px-20 lg:py-11 border-zinc-800 mx-auto relative rounded-3xl"
         style={{
@@ -271,25 +255,35 @@ export default function ClaimBoxes() {
         </div>
 
         <div className="mt-10 flex flex-col items-center gap-10">
-          <div className="flex w-full max-w-3xl flex-col items-center gap-10 md:flex-row md:justify-between">
-            {dayBoxes.map((dayBox) => (
-              <div key={dayBox.day} className="flex flex-col items-center gap-6 md:flex-1">
-                <DayBox {...dayBox} onSelectDay={setSelectedDay} />
-              </div>
+          <div className="flex w-full max-w-xl flex-col items-center gap-4 md:flex-row md:items-center md:gap-4">
+            {dayBoxes.map((dayBox, index) => (
+              <Fragment key={dayBox.day_num}>
+                {index !== 0 && (
+                  <div className="hidden flex-1 mb-10 md:block">
+                    <div className="h-px w-full bg-[#3E3E40]" />
+                  </div>
+                )}
+                <DayBox
+                  dayData={dayBox}
+                  isSelected={dayBox.day_num === activeDay}
+                  onSelectDay={setSelectedDay}
+                />
+              </Fragment>
             ))}
           </div>
 
           <div className="grid w-full grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {dayBoxes
-              .find((dayBox) => dayBox.day === selectedDay)
-              ?.boxes.map((box) => (
-                <MysteryBox
-                  key={`${selectedDay}-${box.boxNumber}`}
-                  {...box}
-                  onOpen={(amount, index) => handleOpenBox(selectedDay, amount, index)}
-                  onReplay={() => handleReplayBox(selectedDay, box.index)}
-                />
-              ))}
+            {selectedDayBoxes?.boxes.map((box, index) => (
+              <MysteryBox
+                key={`${activeDay}-${box.id}`}
+                index={index}
+                boxData={box}
+                dayData={selectedDayBoxes}
+                isOpening={onOpeningBoxId === box.id}
+                onOpen={(boxId) => handleOpenBox(boxId)}
+                onReplay={(boxId) => handleReplayBox(boxId)}
+              />
+            ))}
           </div>
 
           <div className="flex w-full flex-col gap-6 md:flex-row md:items-center md:justify-between">
@@ -299,20 +293,15 @@ export default function ClaimBoxes() {
                   <MonadWhiteLogo />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className="text-xl font-semibold text-primary">0 MON</span>
+                  <span className="text-xl font-semibold text-primary">
+                    {totalRevealedMon.toLocaleString('en-US')} MON
+                  </span>
                   <span className="flex items-center gap-1 text-xs font-medium uppercase tracking-[0.12em] text-tertiary">
                     <Info className="h-3.5 w-3.5" /> Total Revealed MON
                   </span>
                 </div>
               </div>
               <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row md:gap-4">
-                <button
-                  className="inline-flex w-full items-center border-none justify-center gap-2 whitespace-nowrap rounded-full cursor-pointer bg-transparent px-4 py-2 text-sm font-medium text-secondary transition-all duration-200 hover:border-primary/60 hover:text-primary md:w-auto"
-                  type="button"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  Replays
-                </button>
                 <button
                   className="relative inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border border-transparent bg-radial-tertiary px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 md:w-auto"
                   type="button"
@@ -323,16 +312,6 @@ export default function ClaimBoxes() {
               </div>
             </div>
           </div>
-
-          {/* <div className="mt-4 flex w-full justify-center">
-            <button
-              className="inline-flex border-none cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full border-text-disabled bg-transparent px-4 py-2 text-sm font-medium text-secondary transition-colors duration-200 hover:border-primary/60 hover:text-primary"
-              type="button"
-            >
-              <Eye className="h-4 w-4" />
-              Show connections
-            </button>
-          </div> */}
         </div>
       </div>
 
@@ -365,6 +344,6 @@ export default function ClaimBoxes() {
           </button>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

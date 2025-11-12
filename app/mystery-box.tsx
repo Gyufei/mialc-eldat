@@ -6,38 +6,50 @@ import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
 
+import { AirDropBox, AirDropDay } from '@/lib/use-airdrop';
 import { cn } from '@/lib/utils';
 
 export type MysteryBoxProps = {
-  amount: number;
-  day: number;
-  boxNumber: number;
-  isOpened: boolean;
-  isOpening: boolean;
-  isDisabled: boolean;
-  blurContent: boolean;
-  onOpen?: (amount: number, index: number) => void;
-  onReplay?: () => void;
   index: number;
+  dayData: AirDropDay;
+  boxData: AirDropBox;
+  isOpening: boolean;
+  onOpen?: (boxId: number) => void;
+  onReplay?: (boxId: number) => void;
 };
 
 export function MysteryBox({
-  amount,
-  day,
-  boxNumber,
-  isOpened,
+  index,
+  boxData,
   isOpening,
-  isDisabled,
-  blurContent,
+  dayData,
   onOpen,
   onReplay,
-  index,
 }: MysteryBoxProps) {
+  const isOpened = boxData.is_opened;
+  const isDisabled = !dayData.is_active;
+
+  function handleClick() {
+    if (isOpened || isOpening) {
+      return;
+    }
+
+    onOpen?.(boxData.id);
+  }
+
+  function handleClickBtn() {
+    if (isOpened) {
+      onReplay?.(boxData.id);
+    } else {
+      onOpen?.(boxData.id);
+    }
+  }
+
   return (
     <div className="flex flex-col items-center">
       <Button
         variant="outline"
-        onClick={isOpened ? () => onOpen?.(amount, index) : onReplay}
+        onClick={handleClick}
         disabled={isOpening || isDisabled}
         className="flex flex-col w-full h-full bg-transparent! items-center justify-center border-0 hover:bg-transparent rounded-none p-0 gap-0 m-9 group"
       >
@@ -77,7 +89,7 @@ export function MysteryBox({
           <Image
             src={
               isOpened
-                ? `/animations/empty-tier-${amount < 9_999 ? 1 : amount < 39_999 ? 2 : 3}.png`
+                ? `/animations/empty-tier-${boxData.amount < 9_999 ? 1 : boxData.amount < 39_999 ? 2 : 3}.png`
                 : '/animations/unopened-box_v2.gif'
             }
             alt="Mystery Box"
@@ -105,12 +117,11 @@ export function MysteryBox({
           {isOpened && (
             <div
               className={cn(
-                'absolute inset-0 flex items-center justify-center flex-col gap-1 z-10',
-                blurContent && 'blur'
+                'absolute inset-0 flex items-center justify-center flex-col gap-1 z-10'
               )}
             >
               <p className="font-inter text-2xl leading-none font-medium text-center">
-                {amount.toLocaleString('en-US')}
+                {boxData.amount.toLocaleString('en-US')}
               </p>
               <p
                 className="text-lg leading-none font-medium text-center"
@@ -129,10 +140,13 @@ export function MysteryBox({
 
         <div className="flex flex-col gap-2 items-center">
           <p className="text-sm font-normal text-muted-foreground">
-            Day {day} • Box #{boxNumber}
+            Day {dayData.day_num} • Box #{index + 1}
           </p>
 
-          <div className="text-primary flex items-center gap-2 text-base font-medium justify-start h-auto px-3 py-2 group-hover:underline group-hover:text-secondary transition-all duration-200">
+          <div
+            onClick={handleClickBtn}
+            className="text-primary flex items-center gap-2 text-base font-medium justify-start h-auto px-3 py-2 group-hover:underline group-hover:text-secondary transition-all duration-200"
+          >
             {isOpened ? (
               <>
                 <RotateCcw className="w-4 h-4 mr-0" />

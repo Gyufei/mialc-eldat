@@ -7,7 +7,7 @@ import { useIsMobile } from '@/lib/use-is-mobile';
 
 export default function ClaimBoxAnimation() {
   const { user } = usePrivy();
-  const userTwitter = user?.twitter || { username: 'glife', profilePictureUrl: '' };
+  const userTwitter = user?.twitter;
 
   const isMobile = useIsMobile();
 
@@ -50,18 +50,23 @@ export default function ClaimBoxAnimation() {
     async function initValueOfAni() {
       if (vmInstances) {
         const beginToggle = vmInstances.boolean('Username+Image Toggle');
-        if (userTwitter && userTwitter.username && userTwitter.profilePictureUrl && beginToggle) {
+        if (!beginToggle) return;
+
+        if (userTwitter && userTwitter.username && userTwitter.profilePictureUrl) {
           beginToggle.value = true;
+        } else {
+          beginToggle.value = false;
+          return;
         }
 
         const un = vmInstances.string('Username');
         if (un) {
-          un.value = `@${userTwitter?.username}`;
+          un.value = userTwitter?.username ? `@${userTwitter?.username}` : 'Anonymous';
         }
 
         const userPfp = vmInstances.image('ProfilePic');
         if (userPfp) {
-          userPfp.value = await getPfpImage();
+          userPfp.value = userTwitter?.profilePictureUrl ? await getPfpImage() : null;
         }
       }
     }

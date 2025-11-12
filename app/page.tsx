@@ -8,10 +8,13 @@ import { useEffect, useState } from 'react';
 
 import Image from 'next/image';
 
+import useAirdrop from '@/lib/use-airdrop';
+
 import ClaimBoxes from './claim-boxes';
 import Footer from './footer';
 import Header from './header';
 import Login from './login';
+import Profile from './profile';
 import SaveBtn from './save-btn';
 
 // import Profile from './profile';
@@ -19,6 +22,9 @@ import SaveBtn from './save-btn';
 export default function Home() {
   const { ready, authenticated } = usePrivy();
   const [isLogging, setIsLogging] = useState(false);
+
+  const { data: airDropData, isLoading: isAirdropLoading } = useAirdrop();
+  const isAirdropActive = airDropData?.is_active;
 
   useEffect(() => {
     let lastErrorTimestamp = 0;
@@ -120,11 +126,10 @@ export default function Home() {
       <div className="fixed inset-0 h-screen bg-black opacity-50"></div>
       <div className="relative z-10 flex flex-col min-h-screen w-full">
         <Header />
-        {/* <Profile /> */}
-        <ClaimBoxes />
+        {isAirdropLoading ? null : isAirdropActive ? <ClaimBoxes /> : <Profile />}
         <Footer />
       </div>
-      <SaveBtn />
+      {!isAirdropActive && <SaveBtn />}
     </main>
   );
 }
