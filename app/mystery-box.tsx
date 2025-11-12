@@ -159,6 +159,11 @@ export function MysteryBox({
               ) : (
                 'Open Box'
               )
+            ) : isOpening ? (
+              <>
+                <LoaderCircle className="w-4 h-4 mr-0 animate-spin" />
+                Opening...
+              </>
             ) : (
               <div className="h-10"></div>
             )}
