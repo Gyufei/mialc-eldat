@@ -27,6 +27,8 @@ export function MysteryBox({
   onReplay,
 }: MysteryBoxProps) {
   const isOpened = boxData.is_opened;
+  const isCanOpen = boxData.is_can_open;
+
   const isDisabled = !dayData.is_active;
 
   function handleClick() {
@@ -54,7 +56,7 @@ export function MysteryBox({
         className="flex flex-col w-full h-full bg-transparent! items-center justify-center border-0 hover:bg-transparent rounded-none p-0 gap-0 m-9 group"
       >
         <div className="relative mb-9">
-          {!isOpened && (
+          {isCanOpen && !isOpened && (
             <Fragment>
               <div
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full animate-box-glow-1 w-full h-full"
@@ -88,22 +90,22 @@ export function MysteryBox({
 
           <Image
             src={
-              isOpened
-                ? `/animations/empty-tier-${boxData.amount < 9_999 ? 1 : boxData.amount < 39_999 ? 2 : 3}.png`
-                : '/animations/unopened-box_v2.gif'
+              isCanOpen && !isOpened
+                ? '/animations/unopened-box_v2.gif'
+                : `/animations/empty-tier-${boxData.amount < 9_999 ? 1 : boxData.amount < 39_999 ? 2 : 3}.png`
             }
             alt="Mystery Box"
             width={160}
             height={160}
             priority
             className={cn('cursor-pointer relative z-10', {
-              'animate-box-bounce': !isOpened,
-              'scale-[1.7]': isOpened,
+              'animate-box-bounce': isCanOpen && !isOpened,
+              'scale-[1.7]': !isCanOpen || isOpened,
             })}
             unoptimized
           />
 
-          {!isOpened && (
+          {isCanOpen && !isOpened && (
             <Image
               src="/animations/box-sparkles.gif"
               alt="Sparkles"
@@ -114,10 +116,11 @@ export function MysteryBox({
             />
           )}
 
-          {isOpened && (
+          {(!isCanOpen || isOpened) && (
             <div
               className={cn(
-                'absolute inset-0 flex items-center justify-center flex-col gap-1 z-10'
+                'absolute inset-0 flex items-center justify-center flex-col gap-1 z-10',
+                !isCanOpen && 'blur'
               )}
             >
               <p className="font-inter text-2xl leading-none font-medium text-center">
@@ -147,18 +150,17 @@ export function MysteryBox({
             onClick={handleClickBtn}
             className="text-primary flex items-center gap-2 text-base font-medium justify-start h-auto px-3 py-2 group-hover:underline group-hover:text-secondary transition-all duration-200"
           >
-            {isOpened ? (
-              <>
-                <RotateCcw className="w-4 h-4 mr-0" />
-                Replay
-              </>
-            ) : isOpening ? (
-              <>
-                <LoaderCircle className="w-4 h-4 mr-0 animate-spin" />
-                Opening...
-              </>
+            {isCanOpen ? (
+              isOpened ? (
+                <>
+                  <RotateCcw className="w-4 h-4 mr-0" />
+                  Replay
+                </>
+              ) : (
+                'Open Box'
+              )
             ) : (
-              'Open Box'
+              <div className="h-10"></div>
             )}
           </div>
         </div>

@@ -20,6 +20,7 @@ export type AirDropBox = {
   id: number;
   is_opened: boolean;
   amount: number;
+  is_can_open: boolean;
 };
 
 const mockData = 
@@ -33,17 +34,20 @@ const mockData =
       boxes: [
         {
           id: 64,
-          is_opened: false,
+          is_opened: true,
+          is_can_open: true,
           amount: 85,
         },
         {
           id: 88,
           is_opened: false,
+          is_can_open: true,
           amount: 2,
         },
         {
           id: 11,
           is_opened: false,
+          is_can_open: false,
           amount: 57,
         },
       ],
@@ -55,16 +59,19 @@ const mockData =
         {
           id: 2,
           is_opened: false,
+          is_can_open: false,
           amount: 47,
         },
         {
           id: 44,
           is_opened: false,
+          is_can_open: false,
           amount: 64,
         },
         {
           id: 90,
           is_opened: false,
+          is_can_open: false,
           amount: 70,
         },
       ],
@@ -76,16 +83,19 @@ const mockData =
         {
           id: 7,
           is_opened: false,
+          is_can_open: false,
           amount: 85,
         },
         {
           id: 47,
           is_opened: false,
+          is_can_open: false,
           amount: 68,
         },
         {
           id: 31,
           is_opened: false,
+          is_can_open: false,
           amount: 6,
         },
       ],
