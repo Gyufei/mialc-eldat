@@ -70,7 +70,7 @@ function DayBox({ dayData, isSelected, onSelectDay }: DayBoxProps) {
           type="button"
           disabled={!dayData.is_active}
           className={cn(
-            'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border px-5 py-2 text-sm font-medium transition-colors duration-200 group',
+            'inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-full border px-2 py-1 text-sm font-medium transition-colors duration-200 group',
             dayData.is_active
               ? 'text-[#5C5B5E] cursor-pointer hover:text-primary shadow-[inset_0_2px_18px_rgba(114,108,169,0.35)]'
               : 'text-tertiary cursor-not-allowed opacity-60'
@@ -112,6 +112,15 @@ export default function ClaimBoxes() {
 
     return airDropData.days;
   }, [airDropData]);
+
+  const onOpeningBox = useMemo(() => {
+    const currentDay = dayBoxes.find((dayBox) => dayBox.day_num === selectedDay);
+    if (!currentDay) {
+      return null;
+    }
+
+    return currentDay.boxes.find((box) => box.id === onOpeningBoxId);
+  }, [dayBoxes, onOpeningBoxId, selectedDay]);
 
   const { mutate: claimBox, isSuccess, isError } = useClaim();
 
@@ -215,9 +224,9 @@ export default function ClaimBoxes() {
   }, [isError]);
 
   const handleOpenBox = (boxId: number) => {
+    setOnOpeningBoxId(boxId);
     openReveal();
     claimBox({ boxId });
-    setOnOpeningBoxId(boxId);
   };
 
   const handleReplayBox = (_boxId: number) => {
@@ -254,7 +263,7 @@ export default function ClaimBoxes() {
           <ClaimWallet walletAddress={userWallet} />
         </div>
 
-        <div className="mt-10 flex flex-col items-center gap-10">
+        <div className="mt-10 flex flex-col items-center gap-5">
           <div className="flex w-full max-w-xl flex-col items-center gap-4 md:flex-row md:items-center md:gap-4">
             {dayBoxes.map((dayBox, index) => (
               <Fragment key={dayBox.day_num}>
@@ -272,7 +281,7 @@ export default function ClaimBoxes() {
             ))}
           </div>
 
-          <div className="grid w-full grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid w-full grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-3xl">
             {selectedDayBoxes?.boxes.map((box, index) => (
               <MysteryBox
                 key={`${activeDay}-${box.id}`}
@@ -286,7 +295,7 @@ export default function ClaimBoxes() {
             ))}
           </div>
 
-          <div className="flex w-full flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex w-full flex-col gap-6 md:flex-row md:items-center md:justify-between mt-6">
             <div className="flex w-full flex-col items-center gap-4 rounded-2xl border border-border bg-black/40 px-5 py-4 text-center shadow-[0_0_40px_-12px_rgba(149,137,252,0.45)_inset] md:flex-1 md:flex-row md:items-center md:justify-between md:text-left">
               <div className="flex flex-col items-center gap-4 md:flex-row md:items-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-monad-purple-600/30">
@@ -330,7 +339,7 @@ export default function ClaimBoxes() {
           {showAnimation && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-4">
               <div className="w-full max-w-4xl">
-                <ClaimBoxAnimation />
+                <ClaimBoxAnimation amount={onOpeningBox?.amount ?? 0} />
               </div>
             </div>
           )}

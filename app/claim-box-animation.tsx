@@ -5,7 +5,7 @@ import { useCallback, useEffect } from 'react';
 
 import { useIsMobile } from '@/lib/use-is-mobile';
 
-export default function ClaimBoxAnimation() {
+export default function ClaimBoxAnimation({ amount }: { amount: number }) {
   const { user } = usePrivy();
   const userTwitter = user?.twitter;
 
@@ -23,14 +23,14 @@ export default function ClaimBoxAnimation() {
   useEffect(() => {
     if (!vmInstances) return;
 
-    const amount = vmInstances.number('Monad Amount LVL 1');
+    const vmAmount = vmInstances.number('Monad Amount LVL 1');
 
-    if (amount) {
+    if (vmAmount) {
       setTimeout(() => {
-        amount.value = 4444;
+        vmAmount.value = amount;
       }, 1000);
     }
-  }, [vmInstances]);
+  }, [vmInstances, amount]);
 
   const getPfpImage = useCallback(async () => {
     try {

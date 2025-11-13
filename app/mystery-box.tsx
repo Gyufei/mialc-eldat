@@ -53,7 +53,7 @@ export function MysteryBox({
         variant="outline"
         onClick={handleClick}
         disabled={isOpening || isDisabled}
-        className="flex flex-col w-full h-full bg-transparent! items-center justify-center border-0 hover:bg-transparent rounded-none p-0 gap-0 m-9 group"
+        className="flex flex-col w-full h-full bg-transparent! items-center justify-center border-0 hover:bg-transparent rounded-none p-0 gap-0 m-1 group"
       >
         <div className="relative mb-9">
           {isCanOpen && !isOpened && (
