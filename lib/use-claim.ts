@@ -14,7 +14,7 @@ export function useClaim() {
   const { send } = useSendTx();
   const queryClient = useQueryClient();
 
-  async function executeMutation({ boxId }: { boxId: number }) {
+  async function executeMutation({ boxId }: { boxId: string }) {
     const accessToken = await getAccessToken();
     if (!accessToken) {
       throw new Error('No access token');

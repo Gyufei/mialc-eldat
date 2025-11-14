@@ -6,44 +6,44 @@ import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
 
-import { AirDropBox, AirDropDay } from '@/lib/use-airdrop';
+import { AirDropBox } from '@/lib/use-airdrop';
 import { cn } from '@/lib/utils';
 
 export type MysteryBoxProps = {
   index: number;
-  dayData: AirDropDay;
+  dayIndex: number;
   boxData: AirDropBox;
+  isDayActive: boolean;
   isOpening: boolean;
-  onOpen?: (boxId: number) => void;
-  onReplay?: (boxId: number) => void;
+  onOpen?: (boxId: string) => void;
+  onReplay?: (boxId: string) => void;
 };
 
 export function MysteryBox({
+  dayIndex,
   index,
+  isDayActive,
   boxData,
   isOpening,
-  dayData,
   onOpen,
   onReplay,
 }: MysteryBoxProps) {
-  const isOpened = boxData.is_opened;
-  const isCanOpen = boxData.is_can_open;
-
-  const isDisabled = !dayData.is_active;
+  const isOpened = isDayActive && boxData.is_opened;
+  const isCanOpen = isDayActive && boxData.expired;
 
   function handleClick() {
-    if (isOpened || isOpening) {
+    if (!isDayActive || isOpened || !isCanOpen || isOpening) {
       return;
     }
 
-    onOpen?.(boxData.id);
+    onOpen?.(boxData.uuid);
   }
 
   function handleClickBtn() {
     if (isOpened) {
-      onReplay?.(boxData.id);
+      onReplay?.(boxData.uuid);
     } else {
-      onOpen?.(boxData.id);
+      handleClick?.();
     }
   }
 
@@ -52,7 +52,7 @@ export function MysteryBox({
       <Button
         variant="outline"
         onClick={handleClick}
-        disabled={isOpening || isDisabled}
+        disabled={isOpening}
         className="flex flex-col w-full h-full bg-transparent! items-center justify-center border-0 hover:bg-transparent rounded-none p-0 gap-0 m-1 group"
       >
         <div className="relative mb-9">
@@ -143,7 +143,7 @@ export function MysteryBox({
 
         <div className="flex flex-col gap-2 items-center">
           <p className="text-sm font-normal text-muted-foreground">
-            Day {dayData.day_num} • Box #{index + 1}
+            Day {dayIndex} • Box #{index + 1}
           </p>
 
           <div

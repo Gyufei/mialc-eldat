@@ -6,8 +6,6 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 
 import dynamic from 'next/dynamic';
 
-// import { Dialog, DialogContent } from '@/components/ui/dialog';
-
 import useAirdrop, { AirDropDay } from '@/lib/use-airdrop';
 import { useClaim } from '@/lib/use-claim';
 import { cn } from '@/lib/utils';
@@ -23,16 +21,18 @@ type DayBoxProps = {
   dayData: AirDropDay;
   onSelectDay: (day: number) => void;
   isSelected: boolean;
+  index: number;
+  isActive: boolean;
 };
 
-function DayBox({ dayData, isSelected, onSelectDay }: DayBoxProps) {
+function DayBox({ index, dayData, isActive, isSelected, onSelectDay }: DayBoxProps) {
   const { boxes } = dayData;
 
   const handleSelectDay = () => {
-    if (!dayData.is_active) {
+    if (!isActive) {
       return;
     }
-    onSelectDay(dayData.day_num);
+    onSelectDay(dayData.date);
   };
 
   const openedBoxes = boxes.filter((box) => box.is_opened).length;
@@ -47,8 +47,8 @@ function DayBox({ dayData, isSelected, onSelectDay }: DayBoxProps) {
 
   const dayNumberClass = [
     'text-xl font-semibold leading-5',
-    isSelected ? 'text-white' : dayData.is_active ? 'text-primary' : 'text-secondary',
-    dayData.is_active ? '' : 'opacity-70',
+    isSelected ? 'text-white' : isActive ? 'text-primary' : 'text-secondary',
+    isActive ? '' : 'opacity-70',
   ]
     .filter(Boolean)
     .join(' ');
@@ -59,27 +59,27 @@ function DayBox({ dayData, isSelected, onSelectDay }: DayBoxProps) {
         <div
           className={cn(
             'flex h-20 w-20 flex-col items-center justify-center rounded-full border-4 bg-black/30 backdrop-blur-sm transition-all duration-300',
-            dayData.is_active
+            isActive
               ? 'border-[#7D6BF1] shadow-[inset_0_2px_18px_rgba(114,108,169,0.35)]'
               : 'border-border'
           )}
         >
           <span className={dayLabelClass}>Day</span>
-          <span className={dayNumberClass}>{dayData.day_num}</span>
+          <span className={dayNumberClass}>{index}</span>
         </div>
         <button
           onClick={handleSelectDay}
           type="button"
-          disabled={!dayData.is_active}
+          disabled={!isActive}
           className={cn(
             'inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-full border px-2 py-1 text-sm font-medium transition-colors duration-200 group',
-            dayData.is_active
+            isActive
               ? 'text-[#5C5B5E] cursor-pointer hover:text-primary shadow-[inset_0_2px_18px_rgba(114,108,169,0.35)]'
               : 'text-tertiary cursor-not-allowed opacity-60'
           )}
         >
           <Box className="h-4 w-4" />
-          {dayData.is_active ? (
+          {isActive ? (
             <>
               <span className="text-white">{openedBoxes}</span>
               <span className="text-[#5C5B5E] group-hover:text-white">/ {totalBoxes}</span>
@@ -98,8 +98,9 @@ export default function ClaimBoxes() {
   const { user } = usePrivy();
   const userWallet = user?.wallet?.address;
 
-  const [onOpeningBoxId, setOnOpeningBoxId] = useState<number | null>(null);
+  const [onOpeningBoxId, setOnOpeningBoxId] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<number>(1);
+
   const [isRevealVisible, setIsRevealVisible] = useState(false);
   const [showAnimation, setShowAnimation] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -116,27 +117,26 @@ export default function ClaimBoxes() {
   }, [airDropData]);
 
   const onOpeningBox = useMemo(() => {
-    const currentDay = dayBoxes.find((dayBox) => dayBox.day_num === selectedDay);
-    if (!currentDay) {
-      return null;
-    }
+    const allBoxes = dayBoxes.flatMap((dayBox) => dayBox.boxes);
 
-    return currentDay.boxes.find((box) => box.id === onOpeningBoxId);
-  }, [dayBoxes, onOpeningBoxId, selectedDay]);
+    return allBoxes.find((box) => box.uuid === onOpeningBoxId);
+  }, [dayBoxes, onOpeningBoxId]);
 
   const { mutate: claimBox, isSuccess, isError } = useClaim();
 
-  const availableDayNumbers = dayBoxes.map((dayBox) => dayBox.day_num);
+  useEffect(() => {
+    const availableDate = dayBoxes.map((dayBox) => dayBox.date);
 
-  const preferredCurrentDay =
-    airDropData?.current_day && availableDayNumbers.includes(airDropData.current_day)
-      ? airDropData.current_day
-      : undefined;
+    const preferredCurrentDay = Math.max(
+      ...availableDate.filter((date) => date < (airDropData?.current_date ?? 0))
+    );
 
-  const activeDay =
-    (availableDayNumbers.includes(selectedDay) ? selectedDay : preferredCurrentDay) ??
-    dayBoxes[0]?.day_num ??
-    1;
+    if (preferredCurrentDay) {
+      setTimeout(() => {
+        setSelectedDay(preferredCurrentDay);
+      }, 100);
+    }
+  }, [dayBoxes, airDropData?.current_date]);
 
   const totalRevealedMon = dayBoxes.reduce((total, day) => {
     const dayTotal = day.boxes.reduce((sum, box) => {
@@ -150,7 +150,8 @@ export default function ClaimBoxes() {
     return total + dayTotal;
   }, 0);
 
-  const selectedDayBoxes = dayBoxes.find((dayBox) => dayBox.day_num === activeDay);
+  const selectedDayBoxes = dayBoxes.find((dayBox) => dayBox.date === selectedDay);
+  const selectedDayIndex = dayBoxes.findIndex((dayBox) => dayBox.date === selectedDay);
 
   const closeReveal = useCallback(() => {
     if (animationTimerRef.current) {
@@ -225,13 +226,13 @@ export default function ClaimBoxes() {
     }
   }, [isError]);
 
-  const handleOpenBox = (boxId: number) => {
+  const handleOpenBox = (boxId: string) => {
     setOnOpeningBoxId(boxId);
     openReveal();
     claimBox({ boxId });
   };
 
-  const handleReplayBox = (_boxId: number) => {
+  const handleReplayBox = (_boxId: string) => {
     openReveal();
   };
 
@@ -268,31 +269,34 @@ export default function ClaimBoxes() {
         <div className="mt-10 flex flex-col items-center gap-5">
           <div className="flex w-full max-w-xl flex-col items-center gap-4 md:flex-row md:items-center md:gap-4">
             {dayBoxes.map((dayBox, index) => (
-              <Fragment key={dayBox.day_num}>
+              <Fragment key={dayBox.date}>
                 {index !== 0 && (
                   <div className="hidden flex-1 mb-10 md:block">
                     <div className="h-px w-full bg-[#3E3E40]" />
                   </div>
                 )}
                 <DayBox
+                  index={index + 1}
                   dayData={dayBox}
-                  isSelected={dayBox.day_num === activeDay}
+                  isActive={dayBox.date < (airDropData?.current_date ?? 0)}
+                  isSelected={dayBox.date === selectedDay}
                   onSelectDay={setSelectedDay}
                 />
               </Fragment>
             ))}
           </div>
 
-          <div className="grid w-full grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-3xl">
+          <div className="grid w-full grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-3xl overflow-hidden">
             {selectedDayBoxes?.boxes.map((box, index) => (
               <MysteryBox
-                key={`${activeDay}-${box.id}`}
+                key={`${box.uuid}`}
                 index={index}
+                dayIndex={selectedDayIndex + 1}
+                isDayActive={selectedDayBoxes?.date < (airDropData?.current_date ?? 0)}
                 boxData={box}
-                dayData={selectedDayBoxes}
-                isOpening={onOpeningBoxId === box.id}
-                onOpen={(boxId) => handleOpenBox(boxId)}
-                onReplay={(boxId) => handleReplayBox(boxId)}
+                isOpening={onOpeningBoxId === box.uuid}
+                onOpen={(boxId: string) => handleOpenBox(boxId)}
+                onReplay={(boxId: string) => handleReplayBox(boxId)}
               />
             ))}
           </div>

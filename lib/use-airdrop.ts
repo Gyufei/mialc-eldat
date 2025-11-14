@@ -5,22 +5,22 @@ import { ApiPath } from './api-path';
 import { Fetcher } from './fetcher';
 
 export type AirDropData = {
-  is_active: boolean;
-  current_day: number;
   days: AirDropDay[];
+  current_date: number;
+  base_date: number;
 };
 
 export type AirDropDay = {
-  day_num: number;
-  is_active: boolean;
+  date: number;
   boxes: AirDropBox[];
 };
 
 export type AirDropBox = {
-  id: number;
+  uuid: string;
   is_opened: boolean;
   amount: number;
-  is_can_open: boolean;
+  expired: boolean;
+  asset: string;
 };
 
 export default function useAirdrop() {
@@ -40,6 +40,7 @@ export default function useAirdrop() {
     });
 
     return res;
+    // return res;
   }
 
   const airDropData = useQuery({
