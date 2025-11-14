@@ -74,11 +74,5 @@ export default function ClaimBoxAnimation({ amount }: { amount: number }) {
     initValueOfAni();
   }, [userTwitter]);
 
-  return (
-    <div className="h-[400px] w-full">
-      <div style={{ width: '100%', height: '100%' }}>
-        <RiveComponent />
-      </div>
-    </div>
-  );
+  return <RiveComponent />;
 }

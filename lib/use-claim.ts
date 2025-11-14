@@ -9,33 +9,29 @@ import { Fetcher } from './fetcher';
 import { useSendTx } from './use-send-tx';
 import { ITxResponse } from './use-send-tx';
 
-const mockTxRes = {
-  data: '0x183ff085',
-  from: '0x7Be52921AEF0EEbF6F102C87e67aB43d18536591',
-  gas: 35000,
-  to: '0xAc586b65F3cd0627D2D05AdB8EF551C9d2D76E12',
-};
-
 export function useClaim() {
-  const { user } = usePrivy();
+  const { getAccessToken } = usePrivy();
   const { send } = useSendTx();
   const queryClient = useQueryClient();
 
   async function executeMutation({ boxId }: { boxId: number }) {
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
+      throw new Error('No access token');
+    }
     try {
       const txRes = await Fetcher<ITxResponse>(ApiPath.claim, {
         method: 'POST',
         headers: {
+          Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user,
           boxId: boxId,
         }),
       });
 
-      console.log('txRes', txRes);
-      const txhash = await send({ tx_data: mockTxRes });
+      const txhash = await send({ tx_data: txRes.tx_data });
 
       // const saveHashRes = await Fetcher<{ status: boolean; message: string }>(
       //   ApiPath.checkInComplete,

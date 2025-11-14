@@ -23,101 +23,22 @@ export type AirDropBox = {
   is_can_open: boolean;
 };
 
-const mockData = 
-{
-  is_active: true,
-  current_day: 1,
-  days: [
-    {
-      day_num: 1,
-      is_active: true,
-      boxes: [
-        {
-          id: 64,
-          is_opened: true,
-          is_can_open: true,
-          amount: 85,
-        },
-        {
-          id: 88,
-          is_opened: false,
-          is_can_open: true,
-          amount: 2,
-        },
-        {
-          id: 11,
-          is_opened: false,
-          is_can_open: false,
-          amount: 57,
-        },
-      ],
-    },
-    {
-      day_num: 2,
-      is_active: false,
-      boxes: [
-        {
-          id: 2,
-          is_opened: false,
-          is_can_open: false,
-          amount: 47,
-        },
-        {
-          id: 44,
-          is_opened: false,
-          is_can_open: false,
-          amount: 64,
-        },
-        {
-          id: 90,
-          is_opened: false,
-          is_can_open: false,
-          amount: 70,
-        },
-      ],
-    },
-    {
-      day_num: 3,
-      is_active: false,
-      boxes: [
-        {
-          id: 7,
-          is_opened: false,
-          is_can_open: false,
-          amount: 85,
-        },
-        {
-          id: 47,
-          is_opened: false,
-          is_can_open: false,
-          amount: 68,
-        },
-        {
-          id: 31,
-          is_opened: false,
-          is_can_open: false,
-          amount: 6,
-        },
-      ],
-    },
-  ],
-};
-
 export default function useAirdrop() {
-  const { user } = usePrivy();
+  const { getAccessToken, user } = usePrivy();
 
   async function fetchAirDropData(): Promise<AirDropData> {
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
+      throw new Error('No access token');
+    }
+
     const res = await Fetcher<AirDropData>(ApiPath.airdrop, {
-      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({
-        user,
-      }),
     });
 
-    return mockData;
     return res;
   }
 

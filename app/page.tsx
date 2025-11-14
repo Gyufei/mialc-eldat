@@ -126,7 +126,15 @@ export default function Home() {
       <div className="fixed inset-0 h-screen bg-black opacity-50"></div>
       <div className="relative z-10 flex flex-col min-h-screen w-full">
         <Header />
-        {isAirdropLoading ? null : isAirdropActive ? <ClaimBoxes /> : <Profile />}
+        {isAirdropLoading ? (
+          <div className="h-[calc(100vh-100px)] flex items-center justify-center">
+            <LoaderCircle className="w-10 h-10 animate-spin" />
+          </div>
+        ) : isAirdropActive ? (
+          <ClaimBoxes />
+        ) : (
+          <Profile />
+        )}
         <Footer />
       </div>
       {!isAirdropActive && <SaveBtn />}
