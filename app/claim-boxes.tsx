@@ -1,6 +1,6 @@
 import { usePrivy } from '@privy-io/react-auth';
 import { motion } from 'framer-motion';
-import { Box, ChevronRight, Info, Share2, X } from 'lucide-react';
+import { Box, ChevronRight, Info, X } from 'lucide-react';
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -137,7 +137,19 @@ export default function ClaimBoxes() {
 
   const totalRevealedMon = dayBoxes.reduce((total, day) => {
     const dayTotal = day.boxes.reduce((sum, box) => {
-      if (!box.is_opened) {
+      if (!box.is_opened || box.asset !== 'MON') {
+        return sum;
+      }
+
+      return sum + box.amount;
+    }, 0);
+
+    return total + dayTotal;
+  }, 0);
+
+  const totalRevealedTLE = dayBoxes.reduce((total, day) => {
+    const dayTotal = day.boxes.reduce((sum, box) => {
+      if (!box.is_opened || box.asset !== 'TLE') {
         return sum;
       }
 
@@ -229,7 +241,8 @@ export default function ClaimBoxes() {
     claimBox({ boxId });
   };
 
-  const handleReplayBox = (_boxId: string) => {
+  const handleReplayBox = (boxId: string) => {
+    setOnOpeningBoxId(boxId);
     openReveal();
   };
 
@@ -306,21 +319,13 @@ export default function ClaimBoxes() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-xl font-semibold text-primary">
-                    {totalRevealedMon.toLocaleString('en-US')} MON
+                    {totalRevealedMon.toLocaleString('en-US')} MON +{' '}
+                    {totalRevealedTLE.toLocaleString('en-US')} TLE
                   </span>
                   <span className="flex items-center gap-1 text-xs font-medium uppercase tracking-[0.12em] text-tertiary">
-                    <Info className="h-3.5 w-3.5" /> Total Revealed MON
+                    <Info className="h-3.5 w-3.5" /> Total Revealed
                   </span>
                 </div>
-              </div>
-              <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row md:gap-4">
-                <button
-                  className="relative inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border border-transparent bg-radial-tertiary px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:opacity-90 md:w-auto"
-                  type="button"
-                >
-                  <Share2 className="h-4 w-4" />
-                  Share Progress
-                </button>
               </div>
             </div>
           </div>
