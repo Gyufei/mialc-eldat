@@ -2,12 +2,12 @@
 
 import { PrivyProvider } from '@privy-io/react-auth';
 
-import { toSolanaWalletConnectors } from '@privy-io/react-auth/solana';
+// import { toSolanaWalletConnectors } from '@privy-io/react-auth/solana';
 
-const solanaConnectors = toSolanaWalletConnectors({
-  // By default, shouldAutoConnect is enabled
-  shouldAutoConnect: true,
-});
+// const solanaConnectors = toSolanaWalletConnectors({
+//   // By default, shouldAutoConnect is enabled
+//   shouldAutoConnect: true,
+// });
 
 export default function CusPrivyProvider({ children }: { children: React.ReactNode }) {
   return (
@@ -19,19 +19,19 @@ export default function CusPrivyProvider({ children }: { children: React.ReactNo
           ethereum: {
             createOnLogin: 'off',
           },
-          solana: {
-            createOnLogin: 'off',
-          },
+          // solana: {
+          //   createOnLogin: 'off',
+          // },
         },
         appearance: {
           theme: 'dark',
           accentColor: '#676FFF',
           walletChainType: 'ethereum-and-solana',
           walletList: [
+            'metamask',
             'okx_wallet',
             'phantom',
             'backpack',
-            'metamask',
             'coinbase_wallet',
             'haha_wallet',
             'detected_ethereum_wallets',
@@ -40,11 +40,11 @@ export default function CusPrivyProvider({ children }: { children: React.ReactNo
           ],
           logo: '/icons/monad-logo-full.svg',
         },
-        externalWallets: {
-          solana: {
-            connectors: solanaConnectors,
-          },
-        },
+        // externalWallets: {
+        //   solana: {
+        //     connectors: solanaConnectors,
+        //   },
+        // },
       }}
     >
       {children}
