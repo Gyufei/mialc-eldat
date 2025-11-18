@@ -4,18 +4,15 @@ import { Box, ChevronRight, Info, Share2, X } from 'lucide-react';
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import dynamic from 'next/dynamic';
-
 import useAirdrop, { AirDropDay } from '@/lib/use-airdrop';
 import { useClaim } from '@/lib/use-claim';
 import { cn } from '@/lib/utils';
 
+import CanvasAnimation from './canvas-animation';
 import ClaimWallet from './claim-wallet';
 import FAQ from './faq';
 import MonadWhiteLogo from './icon/monad-white-logo';
 import { MysteryBox } from './mystery-box';
-
-const ClaimBoxAnimation = dynamic(() => import('./claim-box-animation'), { ssr: false });
 
 type DayBoxProps = {
   dayData: AirDropDay;
@@ -185,14 +182,14 @@ export default function ClaimBoxes() {
       const playPromise = videoRef.current.play();
       if (playPromise) {
         playPromise.catch((error) => {
-          console.error('自动播放视频失败', error);
+          console.error('Error playing video', error);
         });
       }
     }
 
     animationTimerRef.current = setTimeout(() => {
       setShowAnimation(true);
-    }, 5000);
+    }, 6500);
 
     return () => {
       if (animationTimerRef.current) {
@@ -334,7 +331,7 @@ export default function ClaimBoxes() {
         <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/95 transition-opacity duration-400">
           <video
             ref={videoRef}
-            src="/video/box-rarity-1_v2.mp4"
+            src="/video/1-4.mp4"
             className="h-full w-full object-cover"
             playsInline
             muted
@@ -345,7 +342,10 @@ export default function ClaimBoxes() {
           {showAnimation && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-4">
               <div className="w-full h-full sm:aspect-video">
-                <ClaimBoxAnimation amount={onOpeningBox?.amount ?? 0} />
+                <CanvasAnimation
+                  amount={onOpeningBox?.amount ?? 0}
+                  tokenName={onOpeningBox?.asset ?? ''}
+                />
               </div>
             </div>
           )}
@@ -359,38 +359,6 @@ export default function ClaimBoxes() {
           </button>
         </div>
       )}
-
-      {/* <Dialog open={isRevealVisible} onOpenChange={setIsRevealVisible}>
-        <DialogContent
-          showCloseButton={false}
-          className="w-full p-0 border-0 overflow-hidden max-w-[min(calc((100vh-2rem)*390/800),calc(100vw-2rem))] max-h-[calc(100vh-2rem)] aspect-390/800 sm:aspect-video sm:max-w-[min(calc((100vh-2rem)*16/9),calc(100vw-2rem),1920px)] sm:max-h-[calc(100vh-2rem)]"
-        >
-          <div className="relative w-full h-full">
-            <video
-              ref={videoRef}
-              src="/video/box-rarity-1_v2.mp4"
-              className="absolute inset-0 w-full h-full object-cover"
-              playsInline
-              muted
-              autoPlay
-              onEnded={closeReveal}
-            />
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-              <div className="w-full h-full sm:aspect-video">
-                <ClaimBoxAnimation amount={onOpeningBox?.amount ?? 0} />
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={closeReveal}
-            className="absolute right-6 top-6 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white transition hover:bg-black/80"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </DialogContent>
-      </Dialog> */}
     </motion.div>
   );
 }
