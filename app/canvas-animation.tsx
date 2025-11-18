@@ -91,25 +91,25 @@ export default function CanvasAnimation({
       ctx.fillStyle = gradient;
       ctx.fillText(formattedValue, currentWidth / 2, currentHeight / 2);
 
-      const labelTop = currentHeight - 260;
-      const labelBottom = currentHeight - 140;
-      const labelGradient = ctx.createLinearGradient(
-        0,
-        labelTop,
-        0,
-        labelBottom,
-      );
+      const labelBaselineY = textBottom + 112;
+      ctx.font = "800 68px 'CommitMono', 'Inter', sans-serif";
+      const labelMetrics = ctx.measureText(`$${tokenName}`);
+      const labelAscent = labelMetrics.fontBoundingBoxAscent ?? 54;
+      const labelDescent = labelMetrics.fontBoundingBoxDescent ?? 18;
+      const labelHeight = Math.max(labelAscent + labelDescent, 72);
+      const labelTop = labelBaselineY - labelHeight;
+      const labelBottom = labelBaselineY;
+      const labelGradient = ctx.createLinearGradient(0, labelTop, 0, labelBottom);
       labelGradient.addColorStop(0, "#FFFFFF");
       labelGradient.addColorStop(0.4, "#FFFFFF");
       labelGradient.addColorStop(1, "#6A63F3");
-      ctx.font = "800 68px 'CommitMono', 'Inter', sans-serif";
       ctx.lineWidth = 12;
       ctx.strokeStyle = "#05000F";
       ctx.textAlign = "right";
       ctx.textBaseline = "bottom";
-      ctx.strokeText(`$${tokenName}`, currentWidth - 120, currentHeight - 190);
+      ctx.strokeText(`$${tokenName}`, currentWidth - 120, labelBaselineY);
       ctx.fillStyle = labelGradient;
-      ctx.fillText(`$${tokenName}`, currentWidth - 120, currentHeight - 190);
+      ctx.fillText(`$${tokenName}`, currentWidth - 120, labelBaselineY);
 
       if (progress < 1) {
         animationFrameId = requestAnimationFrame(render);
@@ -120,6 +120,7 @@ export default function CanvasAnimation({
 
     const resizeObserver = new ResizeObserver(() => {
       updateCanvasSize();
+      requestAnimationFrame(render);
     });
 
     resizeObserver.observe(container);
