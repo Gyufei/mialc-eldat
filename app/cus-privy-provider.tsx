@@ -8,11 +8,12 @@ import { PrivyProvider } from '@privy-io/react-auth';
 //   // By default, shouldAutoConnect is enabled
 //   shouldAutoConnect: true,
 // });
+export const PRIVY_APP_ID = 'cmhlr7b9p00uslc0cq25fjedn';
 
 export default function CusPrivyProvider({ children }: { children: React.ReactNode }) {
   return (
     <PrivyProvider
-      appId="cmhlr7b9p00uslc0cq25fjedn"
+      appId={PRIVY_APP_ID}
       config={{
         loginMethods: ['wallet'],
         embeddedWallets: {
