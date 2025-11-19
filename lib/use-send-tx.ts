@@ -1,3 +1,4 @@
+// unused
 import { useAccount } from 'wagmi';
 import { useSendTransaction } from 'wagmi';
 

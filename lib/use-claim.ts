@@ -6,12 +6,10 @@ import { ApiPath } from './api-path';
 // removed toast messages from hook to avoid cross-page toasts
 
 import { Fetcher } from './fetcher';
-import { useSendTx } from './use-send-tx';
 import { ITxResponse } from './use-send-tx';
 
 export function useClaim() {
   const { getAccessToken } = usePrivy();
-  const { send } = useSendTx();
   const queryClient = useQueryClient();
 
   async function executeMutation({ boxId }: { boxId: string }) {
@@ -31,23 +29,7 @@ export function useClaim() {
         }),
       });
 
-      const txhash = await send({ tx_data: txRes.tx_data });
-
-      // const saveHashRes = await Fetcher<{ status: boolean; message: string }>(
-      //   ApiPath.checkInComplete,
-      //   {
-      //     method: 'POST',
-      //     headers: {
-      //       'Content-Type': 'application/json',
-      //     },
-      //     body: JSON.stringify({
-      //       tx_hash: txhash,
-      //       wallet: address,
-      //     }),
-      //   }
-      // );
-
-      return txhash;
+      return txRes;
     } catch (error) {
       throw error;
     }
@@ -56,7 +38,7 @@ export function useClaim() {
   const mutation = useMutation({
     mutationFn: executeMutation,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['isCheckIn'] });
+      queryClient.invalidateQueries({ queryKey: ['airdrop'] });
     },
     onError: (e) => {
       console.log('e====', e.message);

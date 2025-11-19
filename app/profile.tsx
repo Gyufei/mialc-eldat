@@ -2,7 +2,7 @@ import { usePrivy } from '@privy-io/react-auth';
 import { motion } from 'framer-motion';
 
 import ClaimWallet from './claim-wallet';
-import DiscordConnected from './discord-connected';
+// import DiscordConnected from './discord-connected';
 import EmailConnected from './email-connected';
 import EvmWalletConnected from './evm-wallet-connected';
 import FAQ from './faq';
@@ -114,7 +114,7 @@ export default function Profile() {
                       {/* <SolanaWalletConnected /> */}
                       <TwitterConnected />
                       <EmailConnected />
-                      <DiscordConnected />
+                      {/* <DiscordConnected /> */}
                       <TelegramConnected />
                       <FarcasterConnected />
                     </div>
