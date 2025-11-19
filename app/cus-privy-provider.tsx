@@ -8,7 +8,7 @@ import { PrivyProvider } from '@privy-io/react-auth';
 //   // By default, shouldAutoConnect is enabled
 //   shouldAutoConnect: true,
 // });
-export const PRIVY_APP_ID = 'cmhlr7b9p00uslc0cq25fjedn';
+export const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || 'cmhlr7b9p00uslc0cq25fjedn';
 
 export default function CusPrivyProvider({ children }: { children: React.ReactNode }) {
   return (
