@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 
 import { AirDropBox } from '@/lib/use-airdrop';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 
 export type MysteryBoxProps = {
   index: number;
@@ -29,10 +29,9 @@ export function MysteryBox({
   onReplay,
 }: MysteryBoxProps) {
   const isOpened = isDayActive && boxData.is_opened;
-  const isCanOpen = isDayActive && boxData.expired;
 
   function handleClick() {
-    if (!isDayActive || isOpened || !isCanOpen || isOpening) {
+    if (!isDayActive || isOpened || isOpening) {
       return;
     }
 
@@ -56,7 +55,7 @@ export function MysteryBox({
         className="flex flex-col w-full h-full bg-transparent! items-center justify-center border-0 hover:bg-transparent rounded-none p-0 gap-0 m-1 group"
       >
         <div className="relative mb-9">
-          {isCanOpen && !isOpened && (
+          {!isOpened && (
             <Fragment>
               <div
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full animate-box-glow-1 w-full h-full"
@@ -90,7 +89,7 @@ export function MysteryBox({
 
           <Image
             src={
-              isCanOpen && !isOpened
+              !isOpened
                 ? '/animations/unopened-box_v2.gif'
                 : `/animations/empty-tier-${boxData.amount < 9_999 ? 1 : boxData.amount < 39_999 ? 2 : 3}.png`
             }
@@ -99,13 +98,13 @@ export function MysteryBox({
             height={160}
             priority
             className={cn('cursor-pointer relative z-10', {
-              'animate-box-bounce': isCanOpen && !isOpened,
-              'scale-[1.7]': !isCanOpen || isOpened,
+              'animate-box-bounce': !isOpened,
+              'scale-[1.7]': isOpened,
             })}
             unoptimized
           />
 
-          {isCanOpen && !isOpened && (
+          {!isOpened && (
             <Image
               src="/animations/box-sparkles.gif"
               alt="Sparkles"
@@ -116,15 +115,15 @@ export function MysteryBox({
             />
           )}
 
-          {(!isCanOpen || isOpened) && (
+          {isOpened && (
             <div
               className={cn(
                 'absolute inset-0 flex items-center justify-center flex-col gap-1 z-10',
-                !isCanOpen && 'blur'
+                !isOpened && 'blur'
               )}
             >
               <p className="font-inter text-2xl leading-none font-medium text-center">
-                {boxData.amount.toLocaleString('en-US')}
+                {formatNumber(boxData.amount)}
               </p>
               <p
                 className="text-lg leading-none font-medium text-center"
@@ -135,7 +134,7 @@ export function MysteryBox({
                   WebkitTextFillColor: 'transparent',
                 }}
               >
-                MON
+                {boxData.asset}
               </p>
             </div>
           )}
@@ -150,22 +149,18 @@ export function MysteryBox({
             onClick={handleClickBtn}
             className="text-primary flex items-center gap-2 text-base font-medium justify-start h-auto px-3 py-2 group-hover:underline group-hover:text-secondary transition-all duration-200"
           >
-            {isCanOpen ? (
-              isOpened ? (
-                <>
-                  <RotateCcw className="w-4 h-4 mr-0" />
-                  Replay
-                </>
-              ) : (
-                'Open Box'
-              )
-            ) : isOpening ? (
+            {isOpening ? (
               <>
                 <LoaderCircle className="w-4 h-4 mr-0 animate-spin" />
                 Opening...
               </>
+            ) : isOpened ? (
+              <>
+                <RotateCcw className="w-4 h-4 mr-0" />
+                Replay
+              </>
             ) : (
-              <div className="h-10"></div>
+              'Open Box'
             )}
           </div>
         </div>

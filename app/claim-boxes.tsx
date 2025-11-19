@@ -1,12 +1,13 @@
 import { usePrivy } from '@privy-io/react-auth';
 import { motion } from 'framer-motion';
 import { Box, ChevronRight, Info, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import useAirdrop, { AirDropDay } from '@/lib/use-airdrop';
 import { useClaim } from '@/lib/use-claim';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 
 import CanvasAnimation from './canvas-animation';
 import ClaimWallet from './claim-wallet';
@@ -34,6 +35,7 @@ function DayBox({ index, dayData, isActive, isSelected, onSelectDay }: DayBoxPro
 
   const openedBoxes = boxes.filter((box) => box.is_opened).length;
   const totalBoxes = boxes.length;
+  console.log('boxes', boxes, openedBoxes, totalBoxes);
 
   const dayLabelClass = [
     'text-[11px] uppercase tracking-[0.25em]',
@@ -119,13 +121,13 @@ export default function ClaimBoxes() {
     return allBoxes.find((box) => box.uuid === onOpeningBoxId);
   }, [dayBoxes, onOpeningBoxId]);
 
-  const { mutate: claimBox, isSuccess, isError } = useClaim();
+  const { mutate: claimBox, isError } = useClaim();
 
   useEffect(() => {
     const availableDate = dayBoxes.map((dayBox) => dayBox.date);
 
     const preferredCurrentDay = Math.max(
-      ...availableDate.filter((date) => date < (airDropData?.current_date ?? 0))
+      ...availableDate.filter((date) => date <= (airDropData?.current_date ?? 0))
     );
 
     if (preferredCurrentDay) {
@@ -220,18 +222,8 @@ export default function ClaimBoxes() {
   }, []);
 
   useEffect(() => {
-    if (isSuccess) {
-      setTimeout(() => {
-        closeReveal();
-      }, 100);
-    }
-  }, [closeReveal, isSuccess]);
-
-  useEffect(() => {
     if (isError) {
-      setTimeout(() => {
-        closeReveal();
-      }, 100);
+      toast.error('Failed to claim box, please try again later');
     }
   }, [isError]);
 
@@ -288,7 +280,7 @@ export default function ClaimBoxes() {
                 <DayBox
                   index={index + 1}
                   dayData={dayBox}
-                  isActive={dayBox.date < (airDropData?.current_date ?? 0)}
+                  isActive={dayBox.date <= (airDropData?.current_date ?? 0)}
                   isSelected={dayBox.date === selectedDay}
                   onSelectDay={setSelectedDay}
                 />
@@ -302,7 +294,7 @@ export default function ClaimBoxes() {
                 key={`${box.uuid}`}
                 index={index}
                 dayIndex={selectedDayIndex + 1}
-                isDayActive={selectedDayBoxes?.date < (airDropData?.current_date ?? 0)}
+                isDayActive={selectedDayBoxes?.date <= (airDropData?.current_date ?? 0)}
                 boxData={box}
                 isOpening={onOpeningBoxId === box.uuid}
                 onOpen={(boxId: string) => handleOpenBox(boxId)}
@@ -319,8 +311,8 @@ export default function ClaimBoxes() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-xl font-semibold text-primary">
-                    {totalRevealedMon.toLocaleString('en-US')} MON +{' '}
-                    {totalRevealedTLE.toLocaleString('en-US')} TLE
+                    {formatNumber(totalRevealedMon)} MON +{' '}
+                    {formatNumber(totalRevealedTLE)} TLE
                   </span>
                   <span className="flex items-center gap-1 text-xs font-medium uppercase tracking-[0.12em] text-tertiary">
                     <Info className="h-3.5 w-3.5" /> Total Revealed

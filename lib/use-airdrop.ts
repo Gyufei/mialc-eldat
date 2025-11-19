@@ -19,7 +19,6 @@ export type AirDropBox = {
   uuid: string;
   is_opened: boolean;
   amount: number;
-  expired: boolean;
   asset: string;
 };
 
@@ -32,7 +31,16 @@ export default function useAirdrop() {
       throw new Error('No access token');
     }
 
-    const res = await Fetcher<AirDropData>(ApiPath.airdrop, {
+    const wallet = user?.wallet?.address;
+
+    if (!wallet) {
+      throw new Error('No wallet connected');
+    }
+
+    const searchParams = new URLSearchParams();
+    searchParams.set('wallet', wallet || '');
+
+    const res = await Fetcher<AirDropData>(`${ApiPath.airdrop}?${searchParams.toString()}`, {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`,
@@ -40,7 +48,6 @@ export default function useAirdrop() {
     });
 
     return res;
-    // return res;
   }
 
   const airDropData = useQuery({

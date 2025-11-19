@@ -1,5 +1,6 @@
 "use client";
 
+import { formatNumber } from "@/lib/utils";
 import { useEffect, useRef } from "react";
 
 type CanvasAnimationProps = {
@@ -80,7 +81,7 @@ export default function CanvasAnimation({
       gradient.addColorStop(0, "#FFFFFF");
       gradient.addColorStop(0.4, "#FFFFFF");
       gradient.addColorStop(1, "#6A63F3");
-      const formattedValue = currentValue.toLocaleString("en-US");
+      const formattedValue = formatNumber(currentValue);
 
       ctx.lineJoin = "round";
       ctx.lineWidth = 20;
