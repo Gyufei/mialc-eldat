@@ -9,7 +9,8 @@ import { Fetcher } from './fetcher';
 import { ITxResponse } from './use-send-tx';
 
 export function useClaim() {
-  const { getAccessToken } = usePrivy();
+  const { getAccessToken, user } = usePrivy();
+  const userWallet = user?.wallet?.address;
   const queryClient = useQueryClient();
 
   async function executeMutation({ boxId }: { boxId: string }) {
@@ -25,7 +26,8 @@ export function useClaim() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          boxId: boxId,
+          wallet: userWallet,
+          box_id: boxId,
         }),
       });
 
