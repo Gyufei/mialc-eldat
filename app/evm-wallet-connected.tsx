@@ -10,7 +10,7 @@ import { cn, fmtAddr } from '@/lib/utils';
 
 import EVMWallets from './icon/evm-wallets';
 
-export default function EvmWalletConnected() {
+export default function EvmWalletConnected({ size = 'lg' }: { size?: 'lg' | 'sm' }) {
   const { user, linkWallet } = usePrivy();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -49,26 +49,44 @@ export default function EvmWalletConnected() {
       >
         <button
           onClick={() => handleOpen()}
-          className="items-center justify-center whitespace-nowrap text-sm font-medium focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer font-britti-sans transition-all duration-200 disabled:active:scale-100 hover:text-neutral-500 py-6 px-6 gap-4 flex w-full h-full rounded-2xl flex-row active:scale-100"
+          className={cn(
+            'items-center justify-center whitespace-nowrap font-medium focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer font-britti-sans transition-all duration-200 disabled:active:scale-100 hover:text-neutral-500 flex w-full h-full rounded-2xl flex-row active:scale-100',
+            size === 'sm' ? 'py-4 px-4 gap-3 text-xs' : 'py-6 px-6 gap-4 text-sm',
+          )}
           data-testid="EVM-claim-page-wallet-dropdown-button"
         >
           <span
             className="inline-flex shrink-0"
             draggable="false"
-            style={{ width: 48, height: 48 }}
+            style={{ width: size === 'sm' ? 40 : 48, height: size === 'sm' ? 40 : 48 }}
           >
             <span>
               <EVMWallets fillColor={evmWallets?.length > 0 ? '#B8B4FE' : '#52525B'} />
             </span>
           </span>
-          <div className="flex flex-col sm:flex-row sm:items-center w-full gap-2 sm:gap-4 min-w-0">
-            <div className="flex flex-col flex-1 min-w-0 gap-2">
-              <h4 className="font-medium text-primary truncate text-left text-base">
-                <div className="flex items-center gap-[5px]">
+          <div
+            className={cn(
+              'flex flex-col sm:flex-row sm:items-center w-full min-w-0',
+              size === 'sm' ? 'gap-1.5 sm:gap-3' : 'gap-2 sm:gap-4',
+            )}
+          >
+            <div className={cn('flex flex-col flex-1 min-w-0', size === 'sm' ? 'gap-1' : 'gap-2')}>
+              <h4
+                className={cn(
+                  'font-medium text-primary truncate text-left',
+                  size === 'sm' ? 'text-sm' : 'text-base',
+                )}
+              >
+                <div
+                  className={cn(
+                    'flex items-center',
+                    size === 'sm' ? 'gap-1' : 'gap-[5px]',
+                  )}
+                >
                   <span className="truncate">EVM Wallet</span>
                   <Tooltip>
                     <TooltipTrigger>
-                      <Info className="pointer-events-auto text-tertiary z-[20]" />
+                      <Info className="pointer-events-auto text-tertiary z-20" />
                     </TooltipTrigger>
                     <TooltipContent
                       side="bottom"
@@ -83,8 +101,18 @@ export default function EvmWalletConnected() {
                   </Tooltip>
                 </div>
               </h4>
-              <div className="flex flex-col-reverse items-start min-[375px]:flex-row min-[375px]:items-center min-[375px]:justify-between md:justify-between lg:justify-between gap-2 min-w-0">
-                <div className="flex items-center gap-1 text-sm font-medium text-secondary">
+              <div
+                className={cn(
+                  'flex flex-col-reverse items-start min-[375px]:flex-row min-[375px]:items-center min-[375px]:justify-between md:justify-between lg:justify-between min-w-0',
+                  size === 'sm' ? 'gap-1.5' : 'gap-2',
+                )}
+              >
+                <div
+                  className={cn(
+                    'flex items-center gap-1 font-medium text-secondary',
+                    size === 'sm' ? 'text-xs' : 'text-sm',
+                  )}
+                >
                   {isNoWallet ? (
                     <span>Not Connected</span>
                   ) : (
@@ -100,7 +128,9 @@ export default function EvmWalletConnected() {
             </div>
           </div>
         </button>
-        <CollapsibleContent className="flex flex-col gap-2">
+        <CollapsibleContent
+          className={cn('flex flex-col', size === 'sm' ? 'gap-1.5' : 'gap-2')}
+        >
           <div
             data-orientation="horizontal"
             role="none"
@@ -109,27 +139,51 @@ export default function EvmWalletConnected() {
           ></div>
           <>
             {evmWallets?.map((wallet) => (
-              <div className="flex flex-col p-4 gap-4" key={(wallet as WalletWithMetadata).address}>
+              <div
+                className={cn('flex flex-col', size === 'sm' ? 'p-3 gap-3' : 'p-4 gap-4')}
+                key={(wallet as WalletWithMetadata).address}
+              >
                 <div className="flex items-center justify-between text-xs gap-x-4">
-                  <div className="flex flex-row gap-3">
-                    <Wallet className="w-5 h-5 text-secondary" />
-                    <div className="flex flex-col gap-2 items-start">
+                  <div className={cn('flex flex-row', size === 'sm' ? 'gap-2.5' : 'gap-3')}>
+                    <Wallet
+                      className={cn(
+                        'text-secondary',
+                        size === 'sm' ? 'w-4 h-4' : 'w-5 h-5',
+                      )}
+                    />
+                    <div className={cn('flex flex-col items-start', size === 'sm' ? 'gap-1.5' : 'gap-2')}>
                       <button
-                        className="justify-center gap-2 whitespace-nowrap text-sm font-medium focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer font-britti-sans rounded-full duration-200 active:scale-[0.98] disabled:active:scale-100 hover:text-neutral-500 flex items-center p-0 h-auto hover:opacity-70 transition-opacity"
+                        className={cn(
+                          'justify-center gap-2 whitespace-nowrap font-medium focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer font-britti-sans rounded-full duration-200 active:scale-[0.98] disabled:active:scale-100 hover:text-neutral-500 flex items-center p-0 h-auto hover:opacity-70 transition-opacity',
+                          size === 'sm' ? 'text-xs' : 'text-sm',
+                        )}
                         aria-label="Copy address"
                       >
                         <span
-                          className="text-sm font-normal text-primary"
+                          className={cn(
+                            'font-normal text-primary',
+                            size === 'sm' ? 'text-xs' : 'text-sm',
+                          )}
                           title="0xf60132e5Cb6A7319dF1524dc8aC6176987a5fE34"
                         >
                           {fmtAddr((wallet as WalletWithMetadata).address || '')}
                         </span>
                       </button>
                       <div
-                        className="border text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent text-primary-foreground rounded-[0.375rem] flex-shrink-0 bg-primary-foreground p-1 flex items-center gap-1 hover:bg-button-secondary"
+                        className={cn(
+                          'border text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent text-primary-foreground rounded-[0.375rem] shrink-0 bg-primary-foreground flex items-center hover:bg-button-secondary',
+                          size === 'sm' ? 'gap-0.5 px-1 py-0.5' : 'gap-1 p-1',
+                        )}
                         title="Not eligible for airdrop"
                       >
-                        <p className="text-2xs font-semibold text-secondary">NOT ELIGIBLE</p>
+                        <p
+                          className={cn(
+                            'font-semibold text-secondary',
+                            size === 'sm' ? 'text-[10px]' : 'text-2xs',
+                          )}
+                        >
+                          NOT ELIGIBLE
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -146,10 +200,18 @@ export default function EvmWalletConnected() {
             />
             <button
               onClick={handleLinkWallet}
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer font-britti-sans rounded-full transition-all duration-200 active:scale-[0.98] disabled:active:scale-100 hover:text-neutral-500 px-4 text-sm font-medium text-primary h-auto py-3 disabled:opacity-50 w-full"
+              className={cn(
+                'inline-flex items-center justify-center gap-2 whitespace-nowrap focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer font-britti-sans rounded-full transition-all duration-200 active:scale-[0.98] disabled:active:scale-100 hover:text-neutral-500 text-primary h-auto disabled:opacity-50 w-full',
+                size === 'sm' ? 'px-3 py-2 text-xs' : 'px-4 py-3 text-sm',
+              )}
             >
-              <span className="w-full flex items-center justify-center gap-2">
-                <Plus className="w-4 h-4" />
+              <span
+                className={cn(
+                  'w-full flex items-center justify-center gap-2',
+                  size === 'sm' ? 'text-xs' : 'text-sm',
+                )}
+              >
+                <Plus className={cn(size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4')} />
                 Add wallet
               </span>
             </button>

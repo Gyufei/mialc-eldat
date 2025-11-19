@@ -2,18 +2,12 @@ import { usePrivy } from '@privy-io/react-auth';
 import { motion } from 'framer-motion';
 
 import ClaimWallet from './claim-wallet';
+import ConnectionPart from './connection-part';
 // import DiscordConnected from './discord-connected';
-import EmailConnected from './email-connected';
-import EvmWalletConnected from './evm-wallet-connected';
 import FAQ from './faq';
-import FarcasterConnected from './farcaster-connected';
-import CusChevronDown from './icon/chevron-down';
 import MonadGray from './icon/monad-gray';
 import ShareDialog from './share-dialog';
-import SolanaWalletConnected from './solana-wallet-connected';
 import StrengthIndicator from './strength-indicator';
-import TelegramConnected from './telegram-connected';
-import TwitterConnected from './twitter-connected';
 
 export default function Profile() {
   const { user } = usePrivy();
@@ -97,45 +91,7 @@ export default function Profile() {
                 <ShareDialog />
               </div>
             </div>
-
-            <div className="flex flex-col md:order-first md:relative">
-              <div className="shrink-0 mb-4">
-                <h3 className="text-lg font-inter font-semibold mb-2">Connections</h3>
-                <p className="text-sm text-secondary">
-                  Each eligible wallet and account adds to your claim strength. Changes save
-                  automatically and sync with your profile.
-                </p>
-              </div>
-              <div className="space-y-3 md:flex-1 md:relative md:min-h-0 rounded-b-2xl overflow-hidden">
-                <div className="hidden md:block md:absolute md:inset-0">
-                  <div className="flex flex-col overflow-y-auto pr-2 gap-3 h-full">
-                    <div className="space-y-3">
-                      <EvmWalletConnected />
-                      <SolanaWalletConnected />
-                      <TwitterConnected />
-                      <EmailConnected />
-                      {/* <DiscordConnected /> */}
-                      <TelegramConnected />
-                      <FarcasterConnected />
-                    </div>
-                  </div>
-                  <div className="absolute w-full h-12 bottom-0 left-0 z-20 pointer-events-none flex items-center justify-center scroll-fade-gradient">
-                    <div className="flex w-fit items-center gap-1 rounded-full border border-text-disabled bg-alpha-50 px-1.5 py-1 pointer-events-auto">
-                      <span
-                        className="inline-flex shrink-0 rotate-0"
-                        draggable="false"
-                        style={{ width: 14, height: 14 }}
-                      >
-                        <span>
-                          <CusChevronDown strokeColor="#52525B" />
-                        </span>
-                      </span>
-                      <p className="text-xs font-medium text-tertiary">Scroll for more</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <ConnectionPart />
           </div>
         </div>
         <p className="text-sm text-tertiary font-normal mt-6 text-center">
