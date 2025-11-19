@@ -1,5 +1,12 @@
 import Image from 'next/image';
 
+export const socialLinks = {
+  twitter: 'https://x.com/tadle_com',
+  discord: 'http://tadle.com/community/discord/join',
+  youtube: '',
+  instagram: '',
+};
+
 export default function Footer() {
   return (
     <div style={{ opacity: 1, transform: 'none' }}>
@@ -20,7 +27,7 @@ export default function Footer() {
         </div>
         <div className="flex items-center gap-4">
           <a
-            href="https://x.com/monad"
+            href={socialLinks.twitter}
             target="_blank"
             rel="noopener noreferrer"
             className="hover:opacity-70 transition-opacity"
@@ -42,7 +49,7 @@ export default function Footer() {
             </span>
           </a>
           <a
-            href="https://discord.gg/monad"
+            href={socialLinks.discord}
             target="_blank"
             rel="noopener noreferrer"
             className="hover:opacity-70 transition-opacity"
@@ -63,44 +70,54 @@ export default function Footer() {
               </span>
             </span>
           </a>
-          <a
-            href="https://www.youtube.com/@MonadFoundation"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:opacity-70 transition-opacity"
-          >
-            <span
-              className="inline-flex shrink-0"
-              draggable="false"
-              style={{ width: 16, height: 16 }}
+          {socialLinks.youtube && (
+            <a
+              href="https://www.youtube.com/@MonadFoundation"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:opacity-70 transition-opacity"
             >
-              <span>
-                <Image
-                  alt="YouTube"
-                  loading="lazy"
-                  width={16}
-                  height={16}
-                  src="/icons/youtube.svg"
-                />
+              <span
+                className="inline-flex shrink-0"
+                draggable="false"
+                style={{ width: 16, height: 16 }}
+              >
+                <span>
+                  <Image
+                    alt="YouTube"
+                    loading="lazy"
+                    width={16}
+                    height={16}
+                    src="/icons/youtube.svg"
+                  />
+                </span>
               </span>
-            </span>
-          </a>
-          <a
-            href="https://www.instagram.com/monad.xyz"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:opacity-70 transition-opacity"
-          >
-            <span
-              className="inline-flex shrink-0"
-              draggable="false"
-              style={{ width: 16, height: 16 }}
+            </a>
+          )}
+          {socialLinks.instagram && (
+            <a
+              href="https://www.instagram.com/monad.xyz"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:opacity-70 transition-opacity"
             >
-              <span>
-                <Image alt="Instagram" loading="lazy" width={16} height={16} src="/icons/ins.svg" />
+              <span
+                className="inline-flex shrink-0"
+                draggable="false"
+                style={{ width: 16, height: 16 }}
+              >
+                <span>
+                  <Image
+                    alt="Instagram"
+                    loading="lazy"
+                    width={16}
+                    height={16}
+                    src="/icons/ins.svg"
+                  />
+                </span>
               </span>
-            </span>
-          </a>
+            </a>
+          )}
         </div>
       </footer>
     </div>
