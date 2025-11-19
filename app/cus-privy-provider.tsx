@@ -1,13 +1,13 @@
 'use client';
 
 import { PrivyProvider } from '@privy-io/react-auth';
+import { toSolanaWalletConnectors } from '@privy-io/react-auth/solana';
 
-// import { toSolanaWalletConnectors } from '@privy-io/react-auth/solana';
+const solanaConnectors = toSolanaWalletConnectors({
+  // By default, shouldAutoConnect is enabled
+  shouldAutoConnect: true,
+});
 
-// const solanaConnectors = toSolanaWalletConnectors({
-//   // By default, shouldAutoConnect is enabled
-//   shouldAutoConnect: true,
-// });
 export const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || 'cmhlr7b9p00uslc0cq25fjedn';
 
 export default function CusPrivyProvider({ children }: { children: React.ReactNode }) {
@@ -20,9 +20,9 @@ export default function CusPrivyProvider({ children }: { children: React.ReactNo
           ethereum: {
             createOnLogin: 'off',
           },
-          // solana: {
-          //   createOnLogin: 'off',
-          // },
+          solana: {
+            createOnLogin: 'off',
+          },
         },
         appearance: {
           theme: 'dark',
@@ -41,11 +41,11 @@ export default function CusPrivyProvider({ children }: { children: React.ReactNo
           ],
           logo: '/icons/monad-logo-full.svg',
         },
-        // externalWallets: {
-        //   solana: {
-        //     connectors: solanaConnectors,
-        //   },
-        // },
+        externalWallets: {
+          solana: {
+            connectors: solanaConnectors,
+          },
+        },
       }}
     >
       {children}

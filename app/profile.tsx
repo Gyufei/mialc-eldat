@@ -10,7 +10,7 @@ import FarcasterConnected from './farcaster-connected';
 import CusChevronDown from './icon/chevron-down';
 import MonadGray from './icon/monad-gray';
 import ShareDialog from './share-dialog';
-// import SolanaWalletConnected from './solana-wallet-connected';
+import SolanaWalletConnected from './solana-wallet-connected';
 import StrengthIndicator from './strength-indicator';
 import TelegramConnected from './telegram-connected';
 import TwitterConnected from './twitter-connected';
@@ -111,7 +111,7 @@ export default function Profile() {
                   <div className="flex flex-col overflow-y-auto pr-2 gap-3 h-full">
                     <div className="space-y-3">
                       <EvmWalletConnected />
-                      {/* <SolanaWalletConnected /> */}
+                      <SolanaWalletConnected />
                       <TwitterConnected />
                       <EmailConnected />
                       {/* <DiscordConnected /> */}
