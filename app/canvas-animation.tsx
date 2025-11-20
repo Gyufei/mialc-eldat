@@ -1,17 +1,32 @@
-"use client";
+'use client';
 
-import { formatNumber } from "@/lib/utils";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef } from 'react';
 
 type CanvasAnimationProps = {
   amount: number;
   tokenName: string;
 };
 
-export default function CanvasAnimation({
-  amount,
-  tokenName,
-}: CanvasAnimationProps) {
+const getDecimalPlaces = (value: number) => {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  const valueString = value.toString();
+  if (valueString.includes('e-')) {
+    const [, exponentPart] = valueString.split('e-');
+    const exponent = Number(exponentPart);
+    return Number.isNaN(exponent) ? 0 : exponent;
+  }
+
+  const fraction = valueString.split('.')[1];
+  return fraction ? fraction.length : 0;
+};
+
+const formatIntegerPart = (value: number) =>
+  Math.trunc(value).toLocaleString('en-US');
+
+export default function CanvasAnimation({ amount, tokenName }: CanvasAnimationProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -22,7 +37,7 @@ export default function CanvasAnimation({
       return;
     }
 
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext('2d');
     if (!ctx) {
       return;
     }
@@ -52,7 +67,30 @@ export default function CanvasAnimation({
 
     let animationFrameId: number;
     const duration = 1500;
-    const startValue = 0;
+    const decimalPlaces = getDecimalPlaces(amount);
+    const scale = Math.pow(10, decimalPlaces);
+    const targetScaledValue = Math.round(amount * scale);
+    const isSubUnitAmount = amount > 0 && amount < 1;
+    const startScaledValue =
+      isSubUnitAmount && targetScaledValue > 0 ? 1 : 0;
+    const formatter = (scaledValue: number) => {
+      if (decimalPlaces === 0) {
+        return formatIntegerPart(scaledValue);
+      }
+
+      const integerPart = Math.floor(scaledValue / scale);
+      const fractionalPartNumber = Math.abs(scaledValue % scale);
+      const paddedFraction = fractionalPartNumber
+        .toString()
+        .padStart(decimalPlaces, '0')
+        .replace(/0+$/, '');
+
+      if (paddedFraction) {
+        return `${formatIntegerPart(integerPart)}.${paddedFraction}`;
+      }
+
+      return formatIntegerPart(integerPart);
+    };
     const startTime = performance.now();
 
     const render = () => {
@@ -64,33 +102,42 @@ export default function CanvasAnimation({
       const now = performance.now();
       const progress = Math.min((now - startTime) / duration, 1);
       const easedProgress = 1 - Math.pow(1 - progress, 3); // easeOutCubic
-      const currentValue = Math.round(
-        startValue + (amount - startValue) * easedProgress,
+      const interpolated =
+        startScaledValue +
+        (targetScaledValue - startScaledValue) * easedProgress;
+      const animatedScaledValue =
+        progress < 1
+          ? Math.round(interpolated)
+          : targetScaledValue;
+      const safeScaledValue = Math.min(
+        targetScaledValue,
+        Math.max(startScaledValue, animatedScaledValue),
       );
+      const displayText =
+        amount === 0 ? '0' : formatter(targetScaledValue === 0 ? 0 : safeScaledValue);
 
       ctx.clearRect(0, 0, currentWidth, currentHeight);
 
       ctx.font = "800 168px 'Britti Sans', 'Inter', sans-serif";
-      const textMetrics = ctx.measureText(String(currentValue));
+      const textMetrics = ctx.measureText(displayText);
       const ascent = textMetrics.fontBoundingBoxAscent ?? 96;
       const descent = textMetrics.fontBoundingBoxDescent ?? 24;
       const textHeight = Math.max(ascent + descent, 120);
       const textTop = currentHeight / 2 - textHeight / 2;
       const textBottom = currentHeight / 2 + textHeight / 2;
       const gradient = ctx.createLinearGradient(0, textTop, 0, textBottom);
-      gradient.addColorStop(0, "#FFFFFF");
-      gradient.addColorStop(0.4, "#FFFFFF");
-      gradient.addColorStop(1, "#6A63F3");
-      const formattedValue = formatNumber(currentValue);
+      gradient.addColorStop(0, '#FFFFFF');
+      gradient.addColorStop(0.4, '#FFFFFF');
+      gradient.addColorStop(1, '#6A63F3');
 
-      ctx.lineJoin = "round";
+      ctx.lineJoin = 'round';
       ctx.lineWidth = 20;
-      ctx.strokeStyle = "#05000F";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.strokeText(formattedValue, currentWidth / 2, currentHeight / 2);
+      ctx.strokeStyle = '#05000F';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.strokeText(displayText, currentWidth / 2, currentHeight / 2);
       ctx.fillStyle = gradient;
-      ctx.fillText(formattedValue, currentWidth / 2, currentHeight / 2);
+      ctx.fillText(displayText, currentWidth / 2, currentHeight / 2);
 
       const labelBaselineY = textBottom + 112;
       ctx.font = "800 68px 'CommitMono', 'Inter', sans-serif";
@@ -101,13 +148,13 @@ export default function CanvasAnimation({
       const labelTop = labelBaselineY - labelHeight;
       const labelBottom = labelBaselineY;
       const labelGradient = ctx.createLinearGradient(0, labelTop, 0, labelBottom);
-      labelGradient.addColorStop(0, "#FFFFFF");
-      labelGradient.addColorStop(0.4, "#FFFFFF");
-      labelGradient.addColorStop(1, "#6A63F3");
+      labelGradient.addColorStop(0, '#FFFFFF');
+      labelGradient.addColorStop(0.4, '#FFFFFF');
+      labelGradient.addColorStop(1, '#6A63F3');
       ctx.lineWidth = 12;
-      ctx.strokeStyle = "#05000F";
-      ctx.textAlign = "right";
-      ctx.textBaseline = "bottom";
+      ctx.strokeStyle = '#05000F';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
       ctx.strokeText(`$${tokenName}`, currentWidth - 120, labelBaselineY);
       ctx.fillStyle = labelGradient;
       ctx.fillText(`$${tokenName}`, currentWidth - 120, labelBaselineY);
@@ -133,17 +180,17 @@ export default function CanvasAnimation({
   }, [amount, tokenName]);
 
   return (
-    <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
+    <div ref={containerRef} style={{ width: '100%', height: '100%' }}>
       <canvas
         ref={canvasRef}
         role="img"
         aria-label={`${tokenName} 数字动画`}
         style={{
           borderRadius: 16,
-          display: "block",
-          width: "100%",
-          height: "100%",
-          background: "transparent",
+          display: 'block',
+          width: '100%',
+          height: '100%',
+          background: 'transparent',
         }}
       />
     </div>

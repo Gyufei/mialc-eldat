@@ -288,7 +288,7 @@ export default function ClaimBoxes() {
           >
             <CarouselContent className="flex md:flex-row flex-col max-h-[900px] md:max-h-none">
               {withUnReachedSeasonBoxes.map((box) => (
-                <CarouselItem key={box.uuid} className="md:basis-1/2 lg:basis-1/3 user-select-none">
+                <CarouselItem key={box.uuid} className="md:basis-1/2 lg:basis-1/3">
                   <MysteryBox
                     key={`${box.uuid}`}
                     index={getBoxInWeekIndex(withUnReachedSeasonBoxes, box.uuid) ?? 0}

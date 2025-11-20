@@ -47,11 +47,11 @@ export function MysteryBox({
   }
 
   return (
-    <div className="flex flex-col items-center user-select-none">
+    <div className="flex flex-col items-center">
       <Button
         variant="outline"
         onClick={handleClick}
-        disabled={!isCanOpen}
+        disabled={isOpening}
         className="flex flex-col w-full h-full bg-transparent! items-center justify-center border-0 hover:bg-transparent rounded-none p-0 gap-0 m-1 group"
       >
         <div className="relative mb-9">
@@ -145,18 +145,22 @@ export function MysteryBox({
             onClick={handleClickBtn}
             className="text-primary flex items-center gap-2 text-base font-medium justify-start h-auto px-3 py-2 group-hover:underline group-hover:text-secondary transition-all duration-200"
           >
-            {isOpening ? (
-              <>
-                <LoaderCircle className="w-4 h-4 mr-0 animate-spin" />
-                Opening...
-              </>
+            {isCanOpen ? (
+              isOpening ? (
+                <>
+                  <LoaderCircle className="w-4 h-4 mr-0 animate-spin" />
+                  Opening...
+                </>
+              ) : (
+                'Open Box'
+              )
             ) : isOpened ? (
               <>
                 <RotateCcw className="w-4 h-4 mr-0" />
                 Replay
               </>
             ) : (
-              'Open Box'
+              <></>
             )}
           </div>
         </div>
