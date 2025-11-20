@@ -11,27 +11,27 @@ import { cn, formatNumber } from '@/lib/utils';
 
 export type MysteryBoxProps = {
   index: number;
-  dayIndex: number;
+  isWeekActive: boolean;
+
   boxData: AirDropBox;
-  isDayActive: boolean;
   isOpening: boolean;
   onOpen?: (boxId: string) => void;
   onReplay?: (boxId: string) => void;
 };
 
 export function MysteryBox({
-  dayIndex,
   index,
-  isDayActive,
+  isWeekActive,
   boxData,
   isOpening,
   onOpen,
   onReplay,
 }: MysteryBoxProps) {
-  const isOpened = isDayActive && boxData.is_opened;
+  const isOpened = isWeekActive && boxData.is_opened;
+  const isCanOpen = isWeekActive && !isOpened && !isOpening;
 
   function handleClick() {
-    if (!isDayActive || isOpened || isOpening) {
+    if (!isWeekActive || isOpened || isOpening) {
       return;
     }
 
@@ -47,15 +47,15 @@ export function MysteryBox({
   }
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center user-select-none">
       <Button
         variant="outline"
         onClick={handleClick}
-        disabled={isOpening}
+        disabled={!isCanOpen}
         className="flex flex-col w-full h-full bg-transparent! items-center justify-center border-0 hover:bg-transparent rounded-none p-0 gap-0 m-1 group"
       >
         <div className="relative mb-9">
-          {!isOpened && (
+          {isCanOpen && (
             <Fragment>
               <div
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full animate-box-glow-1 w-full h-full"
@@ -88,23 +88,19 @@ export function MysteryBox({
           )}
 
           <Image
-            src={
-              !isOpened
-                ? '/animations/unopened-box_v2.gif'
-                : `/animations/empty-tier-${boxData.amount < 9_999 ? 1 : boxData.amount < 39_999 ? 2 : 3}.png`
-            }
+            src={isCanOpen ? '/animations/unopened-box_v2.gif' : `/animations/empty-tier-1.png`}
             alt="Mystery Box"
             width={160}
             height={160}
             priority
             className={cn('cursor-pointer relative z-10', {
-              'animate-box-bounce': !isOpened,
-              'scale-[1.7]': isOpened,
+              'animate-box-bounce': isCanOpen,
+              'scale-[1.7]': !isCanOpen,
             })}
             unoptimized
           />
 
-          {!isOpened && (
+          {isCanOpen && (
             <Image
               src="/animations/box-sparkles.gif"
               alt="Sparkles"
@@ -115,11 +111,11 @@ export function MysteryBox({
             />
           )}
 
-          {isOpened && (
+          {(isOpened || !isCanOpen) && (
             <div
               className={cn(
                 'absolute inset-0 flex items-center justify-center flex-col gap-1 z-10',
-                !isOpened && 'blur'
+                !isCanOpen && !isOpened && 'blur'
               )}
             >
               <p className="font-inter text-2xl leading-none font-medium text-center">
@@ -142,7 +138,7 @@ export function MysteryBox({
 
         <div className="flex flex-col gap-2 items-center">
           <p className="text-sm font-normal text-muted-foreground">
-            Day {dayIndex} • Box #{index + 1}
+            Week {boxData.weeks} • Box #{index + 1}
           </p>
 
           <div

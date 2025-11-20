@@ -1,5 +1,6 @@
 'use client';
 
+import { isProduction } from '@/lib/api-path';
 import { PrivyProvider } from '@privy-io/react-auth';
 import { toSolanaWalletConnectors } from '@privy-io/react-auth/solana';
 
@@ -8,7 +9,7 @@ const solanaConnectors = toSolanaWalletConnectors({
   shouldAutoConnect: true,
 });
 
-export const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || 'cmhlr7b9p00uslc0cq25fjedn';
+export const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || isProduction ?  'cmi5tijs501zok10cgqzneakt' : 'cmhlr7b9p00uslc0cq25fjedn';
 
 export default function CusPrivyProvider({ children }: { children: React.ReactNode }) {
   return (

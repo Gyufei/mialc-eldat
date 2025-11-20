@@ -16,22 +16,17 @@ export default function ConnectionPart({
   className?: string;
 }) {
   return (
-    <div className={cn('flex flex-col md:order-first md:relative', className)}>
+    <div className={cn('flex flex-col md:order-first relative', className)}>
       <div className={cn('shrink-0', size === 'sm' ? 'mb-3' : 'mb-4')}>
         <h3
           className={cn(
             'font-inter font-semibold',
-            size === 'sm' ? 'text-base mb-1' : 'text-lg mb-2',
+            size === 'sm' ? 'text-base mb-1' : 'text-lg mb-2'
           )}
         >
           Connections
         </h3>
-        <p
-          className={cn(
-            'text-secondary',
-            size === 'sm' ? 'text-xs leading-5' : 'text-sm',
-          )}
-        >
+        <p className={cn('text-secondary', size === 'sm' ? 'text-xs leading-5' : 'text-sm')}>
           Each eligible wallet and account adds to your claim strength. Changes save automatically
           and sync with your profile.
         </p>
@@ -39,14 +34,14 @@ export default function ConnectionPart({
       <div
         className={cn(
           'md:flex-1 md:relative rounded-b-2xl overflow-hidden',
-          size === 'sm' ? 'space-y-2 md:min-h-[260px]' : 'space-y-3 md:min-h-[300px]',
+          size === 'sm' ? 'space-y-2 md:min-h-[260px]' : 'space-y-3 md:min-h-[300px]'
         )}
       >
-        <div className="hidden md:block md:absolute md:inset-0">
+        <div className="md:absolute md:inset-0">
           <div
             className={cn(
               'flex flex-col overflow-y-auto pr-2 h-full',
-              size === 'sm' ? 'gap-2' : 'gap-3',
+              size === 'sm' ? 'gap-2' : 'gap-3'
             )}
           >
             <div className={size === 'sm' ? 'space-y-2' : 'space-y-3'}>
@@ -59,14 +54,16 @@ export default function ConnectionPart({
               <FarcasterConnected size={size} />
             </div>
           </div>
-          <div className={cn(
-            'absolute w-full bottom-0 left-0 z-20 pointer-events-none flex items-center justify-center scroll-fade-gradient',
-            size === 'sm' ? 'h-10' : 'h-12',
-          )}>
+          <div
+            className={cn(
+              'hidden md:flex absolute w-full bottom-0 left-0 z-20 pointer-events-none items-center justify-center scroll-fade-gradient',
+              size === 'sm' ? 'h-10' : 'h-12'
+            )}
+          >
             <div
               className={cn(
                 'flex w-fit items-center rounded-full border border-text-disabled bg-alpha-50 pointer-events-auto',
-                size === 'sm' ? 'gap-0.5 px-1 py-0.5' : 'gap-1 px-1.5 py-1',
+                size === 'sm' ? 'gap-0.5 px-1 py-0.5' : 'gap-1 px-1.5 py-1'
               )}
             >
               <span
@@ -81,7 +78,7 @@ export default function ConnectionPart({
               <p
                 className={cn(
                   'font-medium text-tertiary',
-                  size === 'sm' ? 'text-[11px]' : 'text-xs',
+                  size === 'sm' ? 'text-[11px]' : 'text-xs'
                 )}
               >
                 Scroll for more

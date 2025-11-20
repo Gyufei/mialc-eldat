@@ -5,21 +5,22 @@ import { ApiPath } from './api-path';
 import { Fetcher } from './fetcher';
 
 export type AirDropData = {
-  days: AirDropDay[];
+  boxes: AirDropBox[];
   current_date: number;
   base_date: number;
-};
-
-export type AirDropDay = {
-  date: number;
-  boxes: AirDropBox[];
+  next_open_time: number;
 };
 
 export type AirDropBox = {
   uuid: string;
+  wallet: string;
+  amount: string;
+  tt_amount: string;
+  tfe_amount: string;
   is_opened: boolean;
-  amount: number;
   asset: string;
+  weeks: number;
+  open_at: number;
 };
 
 export default function useAirdrop() {

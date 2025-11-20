@@ -48,7 +48,7 @@ export default function ClaimWallet({ walletAddress }: ClaimWalletProps) {
         </Tooltip>
 
         <PopoverContent className="border-border outline-none overflow-y-auto max-h-[90vh] sm:w-md w-[320px]">
-          <h2 className="text-foreground text-left m-0 font-semibold">Claim Wallet</h2>
+          <h2 className="text-foreground text-left my-2 font-semibold">Claim Wallet</h2>
           <div className="w-full space-y-3">
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-x-4 py-2.5 px-4 bg-primary-foreground rounded-md border border-border h-16">

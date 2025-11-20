@@ -1,104 +1,80 @@
 import { usePrivy } from '@privy-io/react-auth';
 import { motion } from 'framer-motion';
-import { Box, ChevronRight, Info, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import useAirdrop, { AirDropDay } from '@/lib/use-airdrop';
+import {
+  Carousel,
+  CarouselApi,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from '@/components/ui/carousel';
+
+import useAirdrop, { AirDropBox } from '@/lib/use-airdrop';
 import { useClaim } from '@/lib/use-claim';
-import { cn, formatNumber } from '@/lib/utils';
+import { useIsMobile } from '@/lib/use-is-mobile';
+import { formatNumber } from '@/lib/utils';
 
 import CanvasAnimation from './canvas-animation';
 import ClaimWallet from './claim-wallet';
 import FAQ from './faq';
 import MonadWhiteLogo from './icon/monad-white-logo';
 import { MysteryBox } from './mystery-box';
+import SeasonBox from './season-box';
 
-type DayBoxProps = {
-  dayData: AirDropDay;
-  onSelectDay: (day: number) => void;
-  isSelected: boolean;
-  index: number;
-  isActive: boolean;
-};
+const CURRENT_SEASON = 1;
 
-function DayBox({ index, dayData, isActive, isSelected, onSelectDay }: DayBoxProps) {
-  const { boxes } = dayData;
+function getSeasonInitWeek(seasonBoxes: AirDropBox[]) {
+  const weeks = seasonBoxes.map((box) => box.weeks);
+  return Math.max(...weeks);
+}
 
-  const handleSelectDay = () => {
-    if (!isActive) {
-      return;
-    }
-    onSelectDay(dayData.date);
-  };
+function mockUnOpenedBoxes(seasonBoxes: AirDropBox[]) {
+  const initWeek = getSeasonInitWeek(seasonBoxes);
+  const wantFillBoxNumber = 8 - seasonBoxes.length;
+  const newBoxes: AirDropBox[] = [...seasonBoxes];
 
-  const openedBoxes = boxes.filter((box) => box.is_opened).length;
-  const totalBoxes = boxes.length;
-  console.log('boxes', boxes, openedBoxes, totalBoxes);
+  for (let i = 0; i < wantFillBoxNumber; i++) {
+    const newBox: AirDropBox = {
+      uuid: `mock-${i}`,
+      weeks: initWeek + i + 1,
+      wallet: '',
+      amount: '0',
+      tt_amount: '0',
+      tfe_amount: '0',
+      is_opened: false,
+      asset: 'MON',
+      open_at: 0,
+    };
 
-  const dayLabelClass = [
-    'text-[11px] uppercase tracking-[0.25em]',
-    isSelected ? 'text-primary opacity-80' : 'text-tertiary',
-  ]
-    .filter(Boolean)
-    .join(' ');
+    newBoxes.push(newBox);
+  }
 
-  const dayNumberClass = [
-    'text-xl font-semibold leading-5',
-    isSelected ? 'text-white' : isActive ? 'text-primary' : 'text-secondary',
-    isActive ? '' : 'opacity-70',
-  ]
-    .filter(Boolean)
-    .join(' ');
+  return newBoxes;
+}
 
-  return (
-    <div className="flex w-full flex-col items-center gap-6 text-center md:flex-1">
-      <div className="flex flex-col items-center gap-3">
-        <div
-          className={cn(
-            'flex h-20 w-20 flex-col items-center justify-center rounded-full border-4 bg-black/30 backdrop-blur-sm transition-all duration-300',
-            isActive
-              ? 'border-[#7D6BF1] shadow-[inset_0_2px_18px_rgba(114,108,169,0.35)]'
-              : 'border-border'
-          )}
-        >
-          <span className={dayLabelClass}>Day</span>
-          <span className={dayNumberClass}>{index}</span>
-        </div>
-        <button
-          onClick={handleSelectDay}
-          type="button"
-          disabled={!isActive}
-          className={cn(
-            'inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-full border px-2 py-1 text-sm font-medium transition-colors duration-200 group',
-            isActive
-              ? 'text-[#5C5B5E] cursor-pointer hover:text-primary shadow-[inset_0_2px_18px_rgba(114,108,169,0.35)]'
-              : 'text-tertiary cursor-not-allowed opacity-60'
-          )}
-        >
-          <Box className="h-4 w-4" />
-          {isActive ? (
-            <>
-              <span className="text-white">{openedBoxes}</span>
-              <span className="text-[#5C5B5E] group-hover:text-white">/ {totalBoxes}</span>
-            </>
-          ) : (
-            <span className="text-[#5C5B5E]">?</span>
-          )}
-          <ChevronRight className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
-  );
+function getBoxInWeekIndex(boxes: AirDropBox[], boxId: string) {
+  const boxWeek = boxes.find((box) => box.uuid === boxId)?.weeks;
+  if (!boxWeek) {
+    return 0;
+  }
+
+  const weekBoxes = boxes.filter((box) => box.weeks === boxWeek);
+  return weekBoxes.findIndex((box) => box.uuid === boxId);
 }
 
 export default function ClaimBoxes() {
   const { user } = usePrivy();
+  const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
   const userWallet = user?.wallet?.address;
+  const isMobile = useIsMobile();
 
   const [onOpeningBoxId, setOnOpeningBoxId] = useState<string | null>(null);
-  const [selectedDay, setSelectedDay] = useState<number>(1);
+  const [selectedSeasonIndex, setSelectedSeasonIndex] = useState<number>(CURRENT_SEASON);
 
   const [isRevealVisible, setIsRevealVisible] = useState(false);
   const [showAnimation, setShowAnimation] = useState(false);
@@ -107,62 +83,48 @@ export default function ClaimBoxes() {
 
   const { data: airDropData } = useAirdrop();
 
-  const dayBoxes = useMemo<AirDropDay[]>(() => {
-    if (!airDropData?.days?.length) {
-      return [];
+  const seasonBoxes = useMemo<AirDropBox[]>(() => {
+    if (selectedSeasonIndex === 1) {
+      return airDropData?.boxes ?? [];
     }
 
-    return airDropData.days;
-  }, [airDropData]);
+    return [];
+  }, [airDropData, selectedSeasonIndex]);
+
+  const withUnReachedSeasonBoxes = useMemo<AirDropBox[]>(() => {
+    return mockUnOpenedBoxes(seasonBoxes ?? []);
+  }, [seasonBoxes]);
+
+  const initWeek = useMemo(() => {
+    return getSeasonInitWeek(seasonBoxes ?? []);
+  }, [seasonBoxes]);
+
+  const [currentWeek, setCurrentWeek] = useState<number>(initWeek);
+
+  const handleChangeCurrentWeek = useCallback((week: number) => {
+    setCurrentWeek(week);
+  }, []);
 
   const onOpeningBox = useMemo(() => {
-    const allBoxes = dayBoxes.flatMap((dayBox) => dayBox.boxes);
-
-    return allBoxes.find((box) => box.uuid === onOpeningBoxId);
-  }, [dayBoxes, onOpeningBoxId]);
+    return seasonBoxes.find((box) => box.uuid === onOpeningBoxId);
+  }, [seasonBoxes, onOpeningBoxId]);
 
   const { mutate: claimBox, isError } = useClaim();
 
-  useEffect(() => {
-    const availableDate = dayBoxes.map((dayBox) => dayBox.date);
-
-    const preferredCurrentDay = Math.max(
-      ...availableDate.filter((date) => date <= (airDropData?.current_date ?? 0))
-    );
-
-    if (preferredCurrentDay) {
-      setTimeout(() => {
-        setSelectedDay(preferredCurrentDay);
-      }, 100);
-    }
-  }, [dayBoxes, airDropData?.current_date]);
-
-  const totalRevealedMon = dayBoxes.reduce((total, day) => {
-    const dayTotal = day.boxes.reduce((sum, box) => {
-      if (!box.is_opened || box.asset !== 'MON') {
-        return sum;
+  function calcTotalRevealed(boxes: AirDropBox[], asset: string, type: 'tfe_amount' | 'tt_amount') {
+    return boxes.reduce((total, box) => {
+      if (!box.is_opened || box.asset !== asset) {
+        return total;
       }
 
-      return sum + box.amount;
+      return total + Number(box[type as keyof AirDropBox]);
     }, 0);
+  }
 
-    return total + dayTotal;
-  }, 0);
-
-  const totalRevealedTLE = dayBoxes.reduce((total, day) => {
-    const dayTotal = day.boxes.reduce((sum, box) => {
-      if (!box.is_opened || box.asset !== 'TLE') {
-        return sum;
-      }
-
-      return sum + box.amount;
-    }, 0);
-
-    return total + dayTotal;
-  }, 0);
-
-  const selectedDayBoxes = dayBoxes.find((dayBox) => dayBox.date === selectedDay);
-  const selectedDayIndex = dayBoxes.findIndex((dayBox) => dayBox.date === selectedDay);
+  const totalTfeMon = calcTotalRevealed(seasonBoxes, 'MON', 'tfe_amount');
+  const totalTtMon = calcTotalRevealed(seasonBoxes, 'MON', 'tt_amount');
+  const totalTfeTle = calcTotalRevealed(seasonBoxes, 'TLE', 'tfe_amount');
+  const totalTtTle = calcTotalRevealed(seasonBoxes, 'TLE', 'tt_amount');
 
   const closeReveal = useCallback(() => {
     if (animationTimerRef.current) {
@@ -227,6 +189,32 @@ export default function ClaimBoxes() {
     }
   }, [isError]);
 
+  useEffect(() => {
+    if (!carouselApi) return;
+
+    const handleSelect = () => {
+      const selectedIndex = carouselApi.selectedScrollSnap();
+      const selectedBox = withUnReachedSeasonBoxes[selectedIndex];
+      if (!selectedBox) return;
+      setCurrentWeek((prev) => (prev === selectedBox.weeks ? prev : selectedBox.weeks));
+    };
+
+    handleSelect();
+    carouselApi.on('select', handleSelect);
+
+    return () => {
+      carouselApi.off('select', handleSelect);
+    };
+  }, [carouselApi, withUnReachedSeasonBoxes]);
+
+  useEffect(() => {
+    if (!carouselApi) return;
+    const targetIndex = withUnReachedSeasonBoxes.findIndex((box) => box.weeks === currentWeek);
+    if (targetIndex < 0) return;
+    if (carouselApi.selectedScrollSnap() === targetIndex) return;
+    carouselApi.scrollTo(targetIndex);
+  }, [carouselApi, currentWeek, withUnReachedSeasonBoxes]);
+
   const handleOpenBox = (boxId: string) => {
     setOnOpeningBoxId(boxId);
     openReveal();
@@ -270,38 +258,56 @@ export default function ClaimBoxes() {
 
         <div className="mt-10 flex flex-col items-center gap-5">
           <div className="flex w-full max-w-xl flex-col items-center gap-4 md:flex-row md:items-center md:gap-4">
-            {dayBoxes.map((dayBox, index) => (
-              <Fragment key={dayBox.date}>
+            {Array.from({ length: isMobile ? 1 : 3 }).map((_, index) => (
+              <Fragment key={index}>
                 {index !== 0 && (
                   <div className="hidden flex-1 mb-10 md:block">
                     <div className="h-px w-full bg-[#3E3E40]" />
                   </div>
                 )}
-                <DayBox
-                  index={index + 1}
-                  dayData={dayBox}
-                  isActive={dayBox.date <= (airDropData?.current_date ?? 0)}
-                  isSelected={dayBox.date === selectedDay}
-                  onSelectDay={setSelectedDay}
+                <SeasonBox
+                  isActive={selectedSeasonIndex === index + 1}
+                  seasonIndex={index + 1}
+                  isSelected={selectedSeasonIndex === index + 1}
+                  onSelectSeason={() => setSelectedSeasonIndex(index + 1)}
+                  totalWeeks={8}
+                  currentWeek={currentWeek}
+                  onChangeCurrentWeek={handleChangeCurrentWeek}
                 />
               </Fragment>
             ))}
           </div>
 
-          <div className="grid w-full grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 max-w-3xl overflow-hidden">
-            {selectedDayBoxes?.boxes.map((box, index) => (
-              <MysteryBox
-                key={`${box.uuid}`}
-                index={index}
-                dayIndex={selectedDayIndex + 1}
-                isDayActive={selectedDayBoxes?.date <= (airDropData?.current_date ?? 0)}
-                boxData={box}
-                isOpening={onOpeningBoxId === box.uuid}
-                onOpen={(boxId: string) => handleOpenBox(boxId)}
-                onReplay={(boxId: string) => handleReplayBox(boxId)}
-              />
-            ))}
-          </div>
+          <Carousel
+            opts={{
+              align: 'center',
+            }}
+            orientation={isMobile ? 'vertical' : 'horizontal'}
+            setApi={setCarouselApi}
+            className="w-full max-w-3xl"
+          >
+            <CarouselContent className="flex md:flex-row flex-col max-h-[900px] md:max-h-none">
+              {withUnReachedSeasonBoxes.map((box) => (
+                <CarouselItem key={box.uuid} className="md:basis-1/2 lg:basis-1/3 user-select-none">
+                  <MysteryBox
+                    key={`${box.uuid}`}
+                    index={getBoxInWeekIndex(withUnReachedSeasonBoxes, box.uuid) ?? 0}
+                    isWeekActive={box.weeks <= initWeek}
+                    boxData={box}
+                    isOpening={onOpeningBoxId === box.uuid}
+                    onOpen={(boxId: string) => handleOpenBox(boxId)}
+                    onReplay={(boxId: string) => handleReplayBox(boxId)}
+                  />
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            {isMobile ? null : (
+              <>
+                <CarouselNext />
+                <CarouselPrevious />
+              </>
+            )}
+          </Carousel>
 
           <div className="flex w-full flex-col gap-6 md:flex-row md:items-center md:justify-between mt-6">
             <div className="flex w-full flex-col items-center gap-4 rounded-2xl border border-border bg-black/40 px-5 py-4 text-center shadow-[0_0_40px_-12px_rgba(149,137,252,0.45)_inset] md:flex-1 md:flex-row md:items-center md:justify-between md:text-left">
@@ -310,13 +316,21 @@ export default function ClaimBoxes() {
                   <MonadWhiteLogo />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className="text-xl font-semibold text-primary">
-                    {formatNumber(totalRevealedMon)} MON +{' '}
-                    {formatNumber(totalRevealedTLE)} TLE
+                  <span className="flex flex-col md:flex-row text-xl font-semibold text-primary">
+                    <span>Testnet Faucet Engagement:</span>
+                    <span>
+                      {formatNumber(totalTfeMon)} MON + {formatNumber(totalTfeTle)} TLE
+                    </span>
                   </span>
-                  <span className="flex items-center gap-1 text-xs font-medium uppercase tracking-[0.12em] text-tertiary">
+                  <span className="text-xl flex flex-col md:flex-row font-semibold text-primary">
+                    <span>Testnet Transaction:</span>
+                    <span>
+                      {formatNumber(totalTtMon)} MON + {formatNumber(totalTtTle)} TLE
+                    </span>
+                  </span>
+                  {/* <span className="flex items-center gap-1 text-xs font-medium uppercase tracking-[0.12em] text-tertiary">
                     <Info className="h-3.5 w-3.5" /> Total Revealed
-                  </span>
+                  </span> */}
                 </div>
               </div>
             </div>
@@ -340,7 +354,7 @@ export default function ClaimBoxes() {
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-4">
               <div className="w-full h-full sm:aspect-video">
                 <CanvasAnimation
-                  amount={onOpeningBox?.amount ?? 0}
+                  amount={Number(onOpeningBox?.amount ?? 0)}
                   tokenName={onOpeningBox?.asset ?? ''}
                 />
               </div>

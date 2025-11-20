@@ -5,8 +5,6 @@ import ClaimWallet from './claim-wallet';
 import ConnectionPart from './connection-part';
 // import DiscordConnected from './discord-connected';
 import FAQ from './faq';
-import MonadGray from './icon/monad-gray';
-import ShareDialog from './share-dialog';
 import StrengthIndicator from './strength-indicator';
 
 export default function Profile() {
@@ -68,35 +66,10 @@ export default function Profile() {
                 </button>{' '}
                 for more.
               </p>
-              <div className="space-y-2">
-                <button
-                  className="
-                    justify-center whitespace-nowrap text-sm font-medium focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer font-britti-sans rounded-full transition-all duration-200 active:scale-[0.98] disabled:active:scale-100 text-primary bg-[#6c52ff] opacity-50 h-9 px-3 flex items-center gap-2 w-full"
-                  disabled={true}
-                  type="button"
-                >
-                  <span className="flex items-center gap-2">
-                    <span
-                      className="inline-flex shrink-0"
-                      draggable="false"
-                      style={{ width: 16, height: 16 }}
-                    >
-                      <span>
-                        <MonadGray />
-                      </span>
-                    </span>
-                    Reveal Early
-                  </span>
-                </button>
-                <ShareDialog />
-              </div>
             </div>
             <ConnectionPart />
           </div>
         </div>
-        <p className="text-sm text-tertiary font-normal mt-6 text-center">
-          Claim period ends on November 3rd at 13:00 UTC.
-        </p>
       </div>
     </motion.div>
   );
