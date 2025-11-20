@@ -23,6 +23,25 @@ export type AirDropBox = {
   open_at: number;
 };
 
+export const MockData = {
+  boxes: [
+    {
+      uuid: '1b4adcec-1a33-439d-a946-fccac14e3b3a',
+      wallet: '0x7Be52921AEF0EEbF6F102C87e67aB43d18536591',
+      amount: '0.3527',
+      tt_amount: '0.3527',
+      tfe_amount: '0.0000',
+      is_opened: 0,
+      asset: 'MON',
+      weeks: 1,
+      open_at: 1763568000,
+    },
+  ],
+  base_date: 1763568000,
+  current_date: 1763568000,
+  next_open_time: 1763654400,
+};
+
 export default function useAirdrop() {
   const { getAccessToken, user } = usePrivy();
 

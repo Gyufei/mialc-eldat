@@ -316,16 +316,21 @@ export default function ClaimBoxes() {
                   <MonadWhiteLogo />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className="flex flex-col md:flex-row text-xl font-semibold text-primary">
-                    <span>Testnet Faucet Engagement:</span>
+                  <span className="flex flex-col md:flex-row md:items-center md:gap-1 text-xl font-semibold text-primary">
+                    <span className="text-sm text-secondary">Testnet Faucet Engagement:</span>
                     <span>
-                      {formatNumber(totalTfeMon)} MON + {formatNumber(totalTfeTle)} TLE
+                      {formatNumber(totalTfeMon)}
+                      <span className="text-xs text-secondary"> MON </span>+{' '}
+                      {formatNumber(totalTfeTle)}{' '}
+                      <span className="text-xs text-secondary"> TLE </span>
                     </span>
                   </span>
-                  <span className="text-xl flex flex-col md:flex-row font-semibold text-primary">
-                    <span>Testnet Transaction:</span>
+                  <span className="text-xl flex flex-col md:flex-row md:items-center md:gap-1 font-semibold text-primary">
+                    <span className="text-sm text-secondary">Testnet Transaction:</span>
                     <span>
-                      {formatNumber(totalTtMon)} MON + {formatNumber(totalTtTle)} TLE
+                      {formatNumber(totalTtMon)} <span className="text-xs text-secondary">MON</span>{' '}
+                      + {formatNumber(totalTtTle)}{' '}
+                      <span className="text-xs text-secondary">TLE</span>
                     </span>
                   </span>
                   {/* <span className="flex items-center gap-1 text-xs font-medium uppercase tracking-[0.12em] text-tertiary">
