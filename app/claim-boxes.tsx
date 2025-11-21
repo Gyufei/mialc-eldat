@@ -286,7 +286,7 @@ export default function ClaimBoxes() {
             setApi={setCarouselApi}
             className="w-full max-w-3xl"
           >
-            <CarouselContent className="flex md:flex-row flex-col max-h-[900px] md:max-h-none">
+            <CarouselContent className="flex md:flex-row flex-col gap-2 md:gap-0 max-h-[700px] md:max-h-none">
               {withUnReachedSeasonBoxes.map((box) => (
                 <CarouselItem key={box.uuid} className="md:basis-1/2 lg:basis-1/3">
                   <MysteryBox

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 
 import { AirDropBox } from '@/lib/use-airdrop';
 import { cn, formatNumber } from '@/lib/utils';
+import { useIsMobile } from '@/lib/use-is-mobile';
 
 export type MysteryBoxProps = {
   index: number;
@@ -27,6 +28,7 @@ export function MysteryBox({
   onOpen,
   onReplay,
 }: MysteryBoxProps) {
+  const isMobile = useIsMobile();
   const isOpened = isWeekActive && boxData.is_opened;
   const isCanOpen = isWeekActive && !isOpened && !isOpening;
 
@@ -90,8 +92,8 @@ export function MysteryBox({
           <Image
             src={isCanOpen ? '/animations/unopened-box_v2.gif' : `/animations/empty-tier-1.png`}
             alt="Mystery Box"
-            width={160}
-            height={160}
+            width={isMobile ? 110 : 160}
+            height={isMobile ? 110 : 160}
             priority
             className={cn('cursor-pointer relative z-10', {
               'animate-box-bounce': isCanOpen,

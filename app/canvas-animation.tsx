@@ -42,12 +42,21 @@ export default function CanvasAnimation({ amount, tokenName }: CanvasAnimationPr
       return;
     }
 
+    const getFontSizes = () => {
+      const isMobileNow = window.innerWidth < 768;
+      return {
+        amountFontSize: isMobileNow ? 100 : 168,
+        labelFontSize: isMobileNow ? 48 : 68,
+      };
+    };
+
     let currentWidth = 0;
     let currentHeight = 0;
 
     const updateCanvasSize = () => {
       const rect = container.getBoundingClientRect();
-      currentWidth = rect.width;
+      const isMobileNow = window.innerWidth < 768;
+      currentWidth = isMobileNow ? window.innerWidth : rect.width;
       currentHeight = rect.height;
 
       if (currentWidth === 0 || currentHeight === 0) {
@@ -118,7 +127,8 @@ export default function CanvasAnimation({ amount, tokenName }: CanvasAnimationPr
 
       ctx.clearRect(0, 0, currentWidth, currentHeight);
 
-      ctx.font = "800 168px 'Britti Sans', 'Inter', sans-serif";
+      const { amountFontSize, labelFontSize } = getFontSizes();
+      ctx.font = `800 ${amountFontSize}px 'Britti Sans', 'Inter', sans-serif`;
       const textMetrics = ctx.measureText(displayText);
       const ascent = textMetrics.fontBoundingBoxAscent ?? 96;
       const descent = textMetrics.fontBoundingBoxDescent ?? 24;
@@ -140,7 +150,7 @@ export default function CanvasAnimation({ amount, tokenName }: CanvasAnimationPr
       ctx.fillText(displayText, currentWidth / 2, currentHeight / 2);
 
       const labelBaselineY = textBottom + 112;
-      ctx.font = "800 68px 'CommitMono', 'Inter', sans-serif";
+      ctx.font = `800 ${labelFontSize}px 'CommitMono', 'Inter', sans-serif`;
       const labelMetrics = ctx.measureText(`$${tokenName}`);
       const labelAscent = labelMetrics.fontBoundingBoxAscent ?? 54;
       const labelDescent = labelMetrics.fontBoundingBoxDescent ?? 18;
@@ -153,11 +163,14 @@ export default function CanvasAnimation({ amount, tokenName }: CanvasAnimationPr
       labelGradient.addColorStop(1, '#6A63F3');
       ctx.lineWidth = 12;
       ctx.strokeStyle = '#05000F';
-      ctx.textAlign = 'right';
+      
+      const isMobileNow = window.innerWidth < 768;
+      const labelX = isMobileNow ? currentWidth / 2 : currentWidth - 120;
+      ctx.textAlign = isMobileNow ? 'center' : 'right';
       ctx.textBaseline = 'bottom';
-      ctx.strokeText(`$${tokenName}`, currentWidth - 120, labelBaselineY);
+      ctx.strokeText(`$${tokenName}`, labelX, labelBaselineY);
       ctx.fillStyle = labelGradient;
-      ctx.fillText(`$${tokenName}`, currentWidth - 120, labelBaselineY);
+      ctx.fillText(`$${tokenName}`, labelX, labelBaselineY);
 
       if (progress < 1) {
         animationFrameId = requestAnimationFrame(render);
@@ -173,9 +186,17 @@ export default function CanvasAnimation({ amount, tokenName }: CanvasAnimationPr
 
     resizeObserver.observe(container);
 
+    const handleWindowResize = () => {
+      updateCanvasSize();
+      requestAnimationFrame(render);
+    };
+
+    window.addEventListener('resize', handleWindowResize);
+
     return () => {
       cancelAnimationFrame(animationFrameId);
       resizeObserver.disconnect();
+      window.removeEventListener('resize', handleWindowResize);
     };
   }, [amount, tokenName]);
 
