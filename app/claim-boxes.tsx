@@ -14,7 +14,7 @@ import {
   CarouselPrevious,
 } from '@/components/ui/carousel';
 
-import useAirdrop, { AirDropBox } from '@/lib/use-airdrop';
+import useAirdrop, { AirDropBox, AirDropData } from '@/lib/use-airdrop';
 import { useClaim } from '@/lib/use-claim';
 import { useIsMobile } from '@/lib/use-is-mobile';
 import { formatNumber } from '@/lib/utils';
@@ -81,7 +81,7 @@ export default function ClaimBoxes() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const animationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { data: airDropData } = useAirdrop();
+  const { data: airDropData } = useAirdrop() as { data: AirDropData };
 
   const seasonBoxes = useMemo<AirDropBox[]>(() => {
     if (selectedSeasonIndex === 1) {

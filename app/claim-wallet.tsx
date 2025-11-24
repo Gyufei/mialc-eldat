@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-import useAirdrop from '@/lib/use-airdrop';
+import useAirdrop, { AirDropData } from '@/lib/use-airdrop';
 import { fmtAddr } from '@/lib/utils';
 
 import ConnectionPart from './connection-part';
@@ -15,7 +15,10 @@ type ClaimWalletProps = {
 };
 
 export default function ClaimWallet({ walletAddress }: ClaimWalletProps) {
-  const { data: airDropData, isLoading: isAirdropLoading } = useAirdrop();
+  const { data: airDropData, isLoading: isAirdropLoading } = useAirdrop() as {
+    data: AirDropData;
+    isLoading: boolean;
+  };
   const isAirdropActive = airDropData && airDropData?.current_date >= airDropData?.base_date;
 
   const [walletPopoverOpen, setWalletPopoverOpen] = useState(false);
