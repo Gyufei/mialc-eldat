@@ -1,12 +1,14 @@
-"use client";
+'use client';
+
 import { createConfig, http } from 'wagmi';
-import { mainnet, monadTestnet } from 'wagmi/chains';
 import { WagmiProvider } from 'wagmi';
+import { mainnet, monad, monadTestnet } from 'wagmi/chains';
 
 const config = createConfig({
-  chains: [mainnet, monadTestnet],
+  chains: [mainnet, monad, monadTestnet],
   transports: {
     [mainnet.id]: http(),
+    [monad.id]: http(),
     [monadTestnet.id]: http(),
   },
 });
