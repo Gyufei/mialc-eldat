@@ -24,7 +24,13 @@ export default function Home() {
   const [isLogging, setIsLogging] = useState(false);
 
   const { data: airDropData, isLoading: isAirdropLoading } = useAirdrop();
-  const isAirdropActive = airDropData && airDropData?.current_date >= airDropData?.base_date;
+  const isNotEligible = airDropData && 'not_eligible' in airDropData && airDropData.not_eligible;
+  const isAirdropActive =
+    airDropData &&
+    !isNotEligible &&
+    'current_date' in airDropData &&
+    'base_date' in airDropData &&
+    airDropData?.current_date >= airDropData?.base_date;
 
   useEffect(() => {
     let lastErrorTimestamp = 0;

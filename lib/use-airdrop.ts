@@ -42,10 +42,12 @@ export const MockData = {
   next_open_time: 1763654400,
 };
 
-export default function useAirdrop() {
-  const { getAccessToken, user } = usePrivy();
+const UNAUTHORIZED_MESSAGE = 'Invalid Privy access token';
 
-  async function fetchAirDropData(): Promise<AirDropData> {
+export default function useAirdrop() {
+  const { getAccessToken, user, logout } = usePrivy();
+
+  async function fetchAirDropData(): Promise<AirDropData | { not_eligible: true }> {
     const accessToken = await getAccessToken();
     if (!accessToken) {
       throw new Error('No access token');
@@ -60,14 +62,29 @@ export default function useAirdrop() {
     const searchParams = new URLSearchParams();
     searchParams.set('wallet', wallet || '');
 
-    const res = await Fetcher<AirDropData>(`${ApiPath.airdrop}?${searchParams.toString()}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+    try {
+      const res = await Fetcher<AirDropData>(`${ApiPath.airdrop}?${searchParams.toString()}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      return res;
+    } catch (error) {
+      if (error instanceof Error && error.message === UNAUTHORIZED_MESSAGE) {
+        logout();
+      }
 
-    return res;
+      if (error instanceof Error && error.message.includes('Not eligible')) {
+        return {
+          not_eligible: true,
+        };
+      }
+    }
+
+    return {
+      not_eligible: true,
+    };
   }
 
   const airDropData = useQuery({
