@@ -149,7 +149,7 @@ export default function CanvasAnimation({ amount, tokenName }: CanvasAnimationPr
       ctx.fillStyle = gradient;
       ctx.fillText(displayText, currentWidth / 2, currentHeight / 2);
 
-      const labelBaselineY = textBottom + 112;
+      const labelBaselineY = textBottom + (currentHeight * 0.11);
       ctx.font = `800 ${labelFontSize}px 'CommitMono', 'Inter', sans-serif`;
       const labelMetrics = ctx.measureText(`$${tokenName}`);
       const labelAscent = labelMetrics.fontBoundingBoxAscent ?? 54;
@@ -165,7 +165,7 @@ export default function CanvasAnimation({ amount, tokenName }: CanvasAnimationPr
       ctx.strokeStyle = '#05000F';
       
       const isMobileNow = window.innerWidth < 768;
-      const labelX = isMobileNow ? currentWidth / 2 : currentWidth - 120;
+      const labelX = isMobileNow ? currentWidth / 2 : currentWidth * 0.92;
       ctx.textAlign = isMobileNow ? 'center' : 'right';
       ctx.textBaseline = 'bottom';
       ctx.strokeText(`$${tokenName}`, labelX, labelBaselineY);

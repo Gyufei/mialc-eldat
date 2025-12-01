@@ -1,6 +1,6 @@
 import { usePrivy } from '@privy-io/react-auth';
 import { motion } from 'framer-motion';
-import { X } from 'lucide-react';
+// import { X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -13,6 +13,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from '@/components/ui/carousel';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 import useAirdrop, { AirDropBox, AirDropData } from '@/lib/use-airdrop';
 import { useClaim } from '@/lib/use-claim';
@@ -287,7 +288,10 @@ export default function ClaimBoxes() {
           >
             <CarouselContent className="flex md:flex-row flex-col gap-2 md:gap-0 max-h-[720px] md:max-h-none">
               {withUnReachedSeasonBoxes.map((box) => (
-                <CarouselItem key={box.uuid} className="md:pt-10 min-h-[240px] md:min-h-0 md:basis-1/2 lg:basis-1/3">
+                <CarouselItem
+                  key={box.uuid}
+                  className="md:pt-10 min-h-[240px] md:min-h-0 md:basis-1/2 lg:basis-1/3"
+                >
                   <MysteryBox
                     key={`${box.uuid}`}
                     index={getBoxInWeekIndex(withUnReachedSeasonBoxes, box.uuid) ?? 0}
@@ -339,7 +343,38 @@ export default function ClaimBoxes() {
         </div>
       </div>
 
-      {isRevealVisible && (
+      <Dialog open={isRevealVisible} onOpenChange={setIsRevealVisible}>
+        <DialogContent
+          showCloseButton={false}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          className="w-full p-0 border-0 overflow-hidden max-w-[min(calc((100vh-2rem)*390/800),calc(100vw-2rem))] max-h-[calc(100vh-2rem)] aspect-390/800 sm:aspect-video sm:max-w-[min(calc((100vh-2rem)*16/9),calc(100vw-2rem),1920px)] sm:max-h-[calc(100vh-2rem)]"
+        >
+          <div className="relative w-full h-full">
+            <video
+              ref={videoRef}
+              src="/video/1-4.mp4"
+              className="absolute inset-0 w-full h-full object-cover"
+              playsInline
+              muted
+              autoPlay
+              onEnded={closeReveal}
+            />
+          </div>
+
+          {showAnimation && (
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+              <div className="w-full h-full sm:aspect-video">
+                <CanvasAnimation
+                  amount={Number(onOpeningBox?.amount ?? 0)}
+                  tokenName={onOpeningBox?.asset ?? ''}
+                />
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* {isRevealVisible && (
         <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/95 transition-opacity duration-400">
           <video
             ref={videoRef}
@@ -370,7 +405,7 @@ export default function ClaimBoxes() {
             <X className="h-5 w-5" />
           </button>
         </div>
-      )}
+      )} */}
     </motion.div>
   );
 }
