@@ -22,7 +22,6 @@ import { formatNumber } from '@/lib/utils';
 import CanvasAnimation from './canvas-animation';
 import ClaimWallet from './claim-wallet';
 import FAQ from './faq';
-import MonadWhiteLogo from './icon/monad-white-logo';
 import { MysteryBox } from './mystery-box';
 import SeasonBox from './season-box';
 
@@ -286,9 +285,9 @@ export default function ClaimBoxes() {
             setApi={setCarouselApi}
             className="w-full max-w-3xl"
           >
-            <CarouselContent className="flex md:flex-row flex-col gap-2 md:gap-0 max-h-[700px] md:max-h-none">
+            <CarouselContent className="flex md:flex-row flex-col gap-2 md:gap-0 max-h-[720px] md:max-h-none">
               {withUnReachedSeasonBoxes.map((box) => (
-                <CarouselItem key={box.uuid} className="md:basis-1/2 lg:basis-1/3">
+                <CarouselItem key={box.uuid} className="md:pt-10 min-h-[240px] md:min-h-0 md:basis-1/2 lg:basis-1/3">
                   <MysteryBox
                     key={`${box.uuid}`}
                     index={getBoxInWeekIndex(withUnReachedSeasonBoxes, box.uuid) ?? 0}
@@ -312,9 +311,6 @@ export default function ClaimBoxes() {
           <div className="flex w-full flex-col gap-6 md:flex-row md:items-center md:justify-between mt-6">
             <div className="flex w-full flex-col items-center gap-4 rounded-2xl border border-border bg-black/40 px-5 py-4 text-center shadow-[0_0_40px_-12px_rgba(149,137,252,0.45)_inset] md:flex-1 md:flex-row md:items-center md:justify-between md:text-left">
               <div className="flex flex-col items-center gap-4 md:flex-row md:items-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-monad-purple-600/30">
-                  <MonadWhiteLogo />
-                </div>
                 <div className="flex flex-col gap-1">
                   <span className="flex flex-col md:flex-row md:items-center md:gap-1 text-xl font-semibold text-primary">
                     <span className="text-sm text-secondary">Testnet Faucet Engagement:</span>

@@ -1,6 +1,7 @@
 import { Copy, Loader2, Wallet } from 'lucide-react';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -24,6 +25,22 @@ export default function ClaimWallet({ walletAddress }: ClaimWalletProps) {
   const [walletPopoverOpen, setWalletPopoverOpen] = useState(false);
 
   const formattedAddress = fmtAddr(walletAddress || '');
+
+  const handleCopyAddress = async () => {
+    if (!walletAddress) return;
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(walletAddress);
+        toast.success('Address copied');
+      } else {
+        // 兜底方案，复制失败时给出提示
+        toast.error('Unable to access clipboard');
+      }
+    } catch (_error) {
+      toast.error('Failed to copy address');
+    }
+  };
 
   return (
     <>
@@ -61,8 +78,10 @@ export default function ClaimWallet({ walletAddress }: ClaimWalletProps) {
                   <div className="text-sm text-green-500">Connected</div>
                 </div>
                 <button
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer font-britti-sans rounded-full transition-all duration-200 active:scale-[0.98] disabled:active:scale-100 hover:text-neutral-500 h-9 p-0"
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer font-britti-sans rounded-full transition-all duration-200 active:scale-[0.98] disabled:active-scale-100 hover:text-neutral-500 h-9 p-0"
                   aria-label="Copy address"
+                  onClick={handleCopyAddress}
+                  disabled={!walletAddress}
                 >
                   <span>
                     <Copy className="w-4 h-4" />

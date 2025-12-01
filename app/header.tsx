@@ -1,7 +1,11 @@
 'use client';
-import Link from 'next/link';
-import Logo from './icon/logo';
+
+import { usePrivy } from '@privy-io/react-auth';
 import { CircleUser, LogOut } from 'lucide-react';
+
+import Image from 'next/image';
+import Link from 'next/link';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,11 +13,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import CusChevronDown from './icon/chevron-down';
-
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { usePrivy } from '@privy-io/react-auth';
+
 import { fmtAddr } from '@/lib/utils';
+
+import CusChevronDown from './icon/chevron-down';
 
 export default function Header() {
   const { ready, authenticated, logout, user } = usePrivy();
@@ -33,9 +37,13 @@ export default function Header() {
         <div className="mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Link href="/">
-              <span className="inline-flex shrink-0" draggable="false" style={{ width: 36, height: 36 }}>
+              <span
+                className="inline-flex shrink-0"
+                draggable="false"
+                style={{ width: 36, height: 36 }}
+              >
                 <span>
-                  <Logo />
+                  <Image src="/icons/tadle-small-logo-blue.svg" alt="Logo" width={36} height={36} />
                 </span>
               </span>
             </Link>
@@ -56,7 +64,11 @@ export default function Header() {
                         <span className="flex flex-row items-center gap-2">
                           <CircleUser className="w-4 h-4" />
                           {fmtAddr(userWallet || '')}
-                          <span className="inline-flex shrink-0 rotate-0" draggable="false" style={{ width: 16, height: 16 }}>
+                          <span
+                            className="inline-flex shrink-0 rotate-0"
+                            draggable="false"
+                            style={{ width: 16, height: 16 }}
+                          >
                             <span>
                               <CusChevronDown strokeColor="white" />
                             </span>
@@ -71,8 +83,9 @@ export default function Header() {
                     className="bg-popover text-popover-foreground border-border border shadow-md rounded-md px-3 py-1.5 text-xs text-balance max-w-50"
                   >
                     <p>
-                      This is the address used to create your profile. It&apos;s locked to this profile and can&apos;t be linked to other
-                      profiles. Note: Wallets or socials can only be connected to one profile at a time.
+                      This is the address used to create your profile. It&apos;s locked to this
+                      profile and can&apos;t be linked to other profiles. Note: Wallets or socials
+                      can only be connected to one profile at a time.
                     </p>
                   </TooltipContent>
                 </Tooltip>
@@ -88,7 +101,8 @@ export default function Header() {
                   </div>
                   <div className="w-full px-2 mb-2">
                     <p className="text-xs">
-                      This is your profile&apos;s main address. It can&apos;t be unlinked or reused to create another profile.
+                      This is your profile&apos;s main address. It can&apos;t be unlinked or reused
+                      to create another profile.
                     </p>
                   </div>
                   <DropdownMenuSeparator />

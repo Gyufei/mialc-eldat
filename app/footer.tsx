@@ -2,7 +2,7 @@ import Image from 'next/image';
 
 export const socialLinks = {
   twitter: 'https://x.com/tadle_com',
-  discord: 'http://tadle.com/community/discord/join',
+  discord: 'https://tadle.com/community/discord/join',
   youtube: '',
   instagram: '',
 };
@@ -19,11 +19,11 @@ export default function Footer() {
               width={129}
               height={24}
               decoding="async"
-              src="/icons/monad-logo-full.svg"
+              src="/icons/tadle-logo-blue.svg"
               style={{ color: 'transparent' }}
             />
           </a>
-          <span className="text-xs text-gray-600">© 2025 Monad Foundation</span>
+          <span className="text-xs text-gray-600">© 2025 Tadle Foundation</span>
         </div>
         <div className="flex items-center gap-4">
           <a

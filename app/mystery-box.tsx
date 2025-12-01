@@ -64,7 +64,7 @@ export function MysteryBox({
                 style={{
                   background:
                     'radial-gradient(circle, rgba(55, 30, 225, 1) 0%, rgba(55, 30, 225, 0.9) 22%, rgba(55, 30, 225, 0.8) 55%, transparent 100%)',
-                  filter: 'blur(40px)',
+                  filter: 'blur(20px)',
                   zIndex: 0,
                 }}
               />
@@ -73,7 +73,7 @@ export function MysteryBox({
                 style={{
                   background:
                     'radial-gradient(circle, rgba(0, 69, 154, 1) 0%, rgba(0, 69, 154, 0.9) 22%, rgba(0, 69, 154, 0.8) 55%, transparent 100%)',
-                  filter: 'blur(40px)',
+                  filter: 'blur(20px)',
                   zIndex: 1,
                 }}
               />
@@ -82,7 +82,7 @@ export function MysteryBox({
                 style={{
                   background:
                     'radial-gradient(circle, rgba(38, 106, 255, 1) 0%, rgba(38, 106, 255, 1) 30%, rgba(38, 106, 255, 1) 50%, rgba(38, 106, 255, 1) 70%, transparent 100%)',
-                  filter: 'blur(43px)',
+                  filter: 'blur(23px)',
                   zIndex: 3,
                 }}
               />
@@ -95,7 +95,7 @@ export function MysteryBox({
             width={isMobile ? 110 : 160}
             height={isMobile ? 110 : 160}
             priority
-            className={cn('cursor-pointer relative z-10', {
+            className={cn('cursor-pointer relative z-10 select-none', {
               'animate-box-bounce': isCanOpen,
               'scale-[1.7]': !isCanOpen,
             })}

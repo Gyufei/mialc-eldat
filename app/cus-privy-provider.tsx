@@ -1,15 +1,13 @@
 'use client';
 
-import { isProduction } from '@/lib/api-path';
 import { PrivyProvider } from '@privy-io/react-auth';
-import { toSolanaWalletConnectors } from '@privy-io/react-auth/solana';
 
-const solanaConnectors = toSolanaWalletConnectors({
-  // By default, shouldAutoConnect is enabled
-  shouldAutoConnect: true,
-});
+import { isProduction } from '@/lib/api-path';
 
-export const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || isProduction ?  'cmi5tijs501zok10cgqzneakt' : 'cmhlr7b9p00uslc0cq25fjedn';
+export const PRIVY_APP_ID =
+  process.env.NEXT_PUBLIC_PRIVY_APP_ID || isProduction
+    ? 'cmi5tijs501zok10cgqzneakt'
+    : 'cmhlr7b9p00uslc0cq25fjedn';
 
 export default function CusPrivyProvider({ children }: { children: React.ReactNode }) {
   return (
@@ -21,31 +19,23 @@ export default function CusPrivyProvider({ children }: { children: React.ReactNo
           ethereum: {
             createOnLogin: 'off',
           },
-          solana: {
-            createOnLogin: 'off',
-          },
         },
         appearance: {
           theme: 'dark',
+          logo: '/icons/logo.svg',
           accentColor: '#676FFF',
-          walletChainType: 'ethereum-and-solana',
+          walletChainType: 'ethereum-only',
           walletList: [
             'metamask',
             'okx_wallet',
-            'phantom',
-            'backpack',
             'coinbase_wallet',
+            'backpack',
+            'phantom',
             'haha_wallet',
             'detected_ethereum_wallets',
             'wallet_connect',
             'wallet_connect_qr',
           ],
-          logo: '/icons/monad-logo-full.svg',
-        },
-        externalWallets: {
-          solana: {
-            connectors: solanaConnectors,
-          },
         },
       }}
     >

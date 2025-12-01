@@ -1,11 +1,12 @@
 import { cn } from '@/lib/utils';
 
-import EmailConnected from './email-connected';
+import DiscordConnected from './discord-connected';
+// import EmailConnected from './email-connected';
 import EvmWalletConnected from './evm-wallet-connected';
 import FarcasterConnected from './farcaster-connected';
 import CusChevronDown from './icon/chevron-down';
-import SolanaWalletConnected from './solana-wallet-connected';
-import TelegramConnected from './telegram-connected';
+// import SolanaWalletConnected from './solana-wallet-connected';
+// import TelegramConnected from './telegram-connected';
 import TwitterConnected from './twitter-connected';
 
 export default function ConnectionPart({
@@ -46,11 +47,11 @@ export default function ConnectionPart({
           >
             <div className={size === 'sm' ? 'space-y-2' : 'space-y-3'}>
               <EvmWalletConnected size={size} />
-              <SolanaWalletConnected size={size} />
+              {/* <SolanaWalletConnected size={size} /> */}
               <TwitterConnected size={size} />
-              <EmailConnected size={size} />
-              {/* <DiscordConnected /> */}
-              <TelegramConnected size={size} />
+              {/* <EmailConnected size={size} /> */}
+              <DiscordConnected size={size} />
+              {/* <TelegramConnected size={size} /> */}
               <FarcasterConnected size={size} />
             </div>
           </div>

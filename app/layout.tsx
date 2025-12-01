@@ -73,7 +73,6 @@ export const metadata: Metadata = {
   icons: {
     icon: [{ url: '/favicon.ico', sizes: '48x48', type: 'image/x-icon' }, { url: '/favicon.ico' }],
   },
-  manifest: '/manifest.webmanifest',
   metadataBase: new URL('https://claim.tadle.com'),
 };
 

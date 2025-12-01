@@ -1,12 +1,9 @@
 import { useLogin, usePrivy } from '@privy-io/react-auth';
 import { motion } from 'framer-motion';
-// import { VolumeX } from 'lucide-react';
 
 import { useEffect, useRef } from 'react';
 
 import Image from 'next/image';
-
-import MonadWhiteLogo from './icon/monad-white-logo';
 
 export default function Login({
   isLogging,
@@ -15,7 +12,7 @@ export default function Login({
   isLogging: boolean;
   onLoggingChange: (bool: boolean) => void;
 }) {
-  const titleLine1 = ['Enter', 'the', 'MON'];
+  const titleLine1 = ['Enter', 'the', 'Tadle'];
   const titleLine2 = ['Claim', 'Portal'];
   const subtitleWords = ['Create', 'an', 'account', 'to', 'discover', 'your', 'status'];
   const wordDuration = 0.4;
@@ -24,7 +21,6 @@ export default function Login({
   const lastEndTitle2 = (titleLine1.length + titleLine2.length - 1) * wordDelay + wordDuration;
   const lastEndSubtitle = (subtitleWords.length - 1) * wordDelay + wordDuration;
   const buttonDelay = Math.max(lastEndTitle1, lastEndTitle2, lastEndSubtitle) + 0.2;
-  const volumeDelay = buttonDelay + 0.2;
 
   const { authenticated } = usePrivy();
   const { login } = useLogin();
@@ -137,7 +133,7 @@ export default function Login({
             style={{ width: 36, height: 36 }}
           >
             <span>
-              <MonadWhiteLogo />
+              <Image src="/icons/logo-small-white.svg" alt="Logo" width={36} height={36} />
             </span>
           </span>
         </div>
@@ -202,19 +198,6 @@ export default function Login({
             </span>
           </button>
         </motion.div>
-        {/* <motion.div
-          className="absolute -bottom-30"
-          initial={{ opacity: 0, filter: 'blur(8px)' }}
-          animate={{ opacity: 1, filter: 'blur(0px)' }}
-          transition={{ duration: 0.5, delay: volumeDelay, ease: 'easeOut' }}
-        >
-          <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer font-britti-sans transition-all duration-200 active:scale-[0.98] disabled:active:scale-100 relative text-white text-sm font-medium leading-5 bg-radial-tertiary [&>*]:relative [&>*]:z-10 disabled:opacity-50 px-4 py-2 rounded-full h-14 sm:h-auto">
-            <span className="flex flex-row items-center gap-2 text-center whitespace-normal">
-              <VolumeX className="w-4 h-4" />
-              TURN ON YOUR SOUND FOR THE BEST EXPERIENCE
-            </span>
-          </button>
-        </motion.div> */}
       </div>
     </main>
   );
