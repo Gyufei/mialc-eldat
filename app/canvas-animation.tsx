@@ -151,7 +151,34 @@ export default function CanvasAnimation({
       // 每一帧都尝试绘制视频画面作为背景
       if (isVideoReady) {
         try {
-          ctx.drawImage(videoElement, 0, 0, currentWidth, currentHeight);
+          const isMobileNow = window.innerWidth < 768;
+
+          // 移动端：保持视频原始比例，使用「cover」策略，超出画布部分裁切掉
+          if (isMobileNow) {
+            const videoW = videoElement.videoWidth || currentWidth;
+            const videoH = videoElement.videoHeight || currentHeight;
+
+            if (videoW > 0 && videoH > 0) {
+              const scale = Math.max(currentWidth / videoW, currentHeight / videoH);
+              const drawW = videoW * scale;
+              const drawH = videoH * scale;
+
+              // 先按居中计算，再额外向左偏移一小段比例（比如 8% 的画布宽度）
+              const baseDx = (currentWidth - drawW) / 2;
+              const dxOffset = currentWidth * 0.09;
+              const dx = baseDx - dxOffset;
+
+              const dy = (currentHeight - drawH) / 2;
+
+              ctx.drawImage(videoElement, dx, dy, drawW, drawH);
+            } else {
+              // 回退：如果拿不到视频尺寸，就退化为拉伸铺满
+              ctx.drawImage(videoElement, 0, 0, currentWidth, currentHeight);
+            }
+          } else {
+            // 桌面端：保持现有逻辑，直接铺满整个画布
+            ctx.drawImage(videoElement, 0, 0, currentWidth, currentHeight);
+          }
         } catch {
           // 某些情况下 drawImage 可能抛错（跨域、未准备好等），忽略即可
         }

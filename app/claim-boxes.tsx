@@ -525,7 +525,7 @@ export default function ClaimBoxes() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="absolute top-2/3 sm:top-[73%] xl:top-4/5 left-0 right-0 flex justify-center px-4 z-10"
+              className="absolute top-3/4 sm:top-[73%] xl:top-4/5 left-0 right-0 flex justify-center px-4 z-10"
             >
               <div className="flex flex-col items-center gap-3">
                 <div className="flex gap-2 sm:gap-4">
