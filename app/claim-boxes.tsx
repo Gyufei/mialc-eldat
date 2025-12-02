@@ -1,10 +1,11 @@
 import { usePrivy } from '@privy-io/react-auth';
 import { motion } from 'framer-motion';
-// import { X } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { Button } from '@/components/ui/button';
 import {
   Carousel,
   CarouselApi,
@@ -23,6 +24,7 @@ import { formatNumber } from '@/lib/utils';
 import CanvasAnimation from './canvas-animation';
 import ClaimWallet from './claim-wallet';
 import FAQ from './faq';
+import XTwitter from './icon/x-twitter';
 import { MysteryBox } from './mystery-box';
 import SeasonBox from './season-box';
 
@@ -78,8 +80,10 @@ export default function ClaimBoxes() {
 
   const [isRevealVisible, setIsRevealVisible] = useState(false);
   const [showAnimation, setShowAnimation] = useState(false);
+  const [showOpBtn, setShowOpBtn] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const animationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const opBtnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: airDropData } = useAirdrop() as { data: AirDropData };
 
@@ -131,13 +135,17 @@ export default function ClaimBoxes() {
       clearTimeout(animationTimerRef.current);
       animationTimerRef.current = null;
     }
+    if (opBtnTimerRef.current) {
+      clearTimeout(opBtnTimerRef.current);
+      opBtnTimerRef.current = null;
+    }
     setIsRevealVisible(false);
     setOnOpeningBoxId(null);
+    setShowOpBtn(false);
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.currentTime = 0;
     }
-    setOnOpeningBoxId(null);
   }, []);
 
   const openReveal = useCallback(() => {
@@ -145,8 +153,12 @@ export default function ClaimBoxes() {
       clearTimeout(animationTimerRef.current);
       animationTimerRef.current = null;
     }
-
+    if (opBtnTimerRef.current) {
+      clearTimeout(opBtnTimerRef.current);
+      opBtnTimerRef.current = null;
+    }
     setShowAnimation(false);
+    setShowOpBtn(false);
     setIsRevealVisible(true);
   }, []);
 
@@ -167,10 +179,18 @@ export default function ClaimBoxes() {
       setShowAnimation(true);
     }, 6500);
 
+    opBtnTimerRef.current = setTimeout(() => {
+      setShowOpBtn(true);
+    }, 6500);
+
     return () => {
       if (animationTimerRef.current) {
         clearTimeout(animationTimerRef.current);
         animationTimerRef.current = null;
+      }
+      if (opBtnTimerRef.current) {
+        clearTimeout(opBtnTimerRef.current);
+        opBtnTimerRef.current = null;
       }
     };
   }, [isRevealVisible]);
@@ -179,6 +199,10 @@ export default function ClaimBoxes() {
     return () => {
       if (animationTimerRef.current) {
         clearTimeout(animationTimerRef.current);
+      }
+      if (opBtnTimerRef.current) {
+        clearTimeout(opBtnTimerRef.current);
+        opBtnTimerRef.current = null;
       }
     };
   }, []);
@@ -381,41 +405,42 @@ export default function ClaimBoxes() {
               </div>
             </div>
           )}
+
+          {showOpBtn && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              className="absolute top-2/3 sm:top-[73%] xl:top-4/5 left-0 right-0 flex justify-center px-4 z-10"
+            >
+              <div className="flex flex-col items-center gap-3">
+                <div className="flex gap-2 sm:gap-4">
+                  <Button
+                    onClick={() => {
+                      const e = encodeURIComponent('Tadle BOXES \uD83C\uDF81');
+                      window.open('https://twitter.com/intent/tweet?text='.concat(e), '_blank');
+                    }}
+                    className="bg-black text-white hover:bg-black/80 flex-1 max-w-45 flex flex-row gap-2 items-center"
+                  >
+                    Share On
+                    <XTwitter style={{ width: 16, height: 16 }} />
+                  </Button>
+                  <Button className="bg-black hover:bg-black/80 text-white flex-1 max-w-45 flex flex-row gap-2 items-center">
+                    <Download size="sm" color="#fff" className="size-4" />
+                    Download Video
+                  </Button>
+                </div>
+                <button
+                  onClick={closeReveal}
+                  className="w-fit inline-flex items-center justify-center gap-2 whitespace-nowrap focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer font-britti-sans transition-all duration-200 active:scale-[0.98] disabled:active:scale-100 relative text-white text-sm font-medium leading-5 rounded-full bg-radial-tertiary [&>*]:relative [&>*]:z-10 disabled:opacity-50 h-9.5 px-4 py-2 group"
+                >
+                  Continue
+                </button>
+              </div>
+            </motion.div>
+          )}
         </DialogContent>
       </Dialog>
-
-      {/* {isRevealVisible && (
-        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/95 transition-opacity duration-400">
-          <video
-            ref={videoRef}
-            src="/video/1-4.mp4"
-            className="h-full w-full object-cover"
-            playsInline
-            muted
-            autoPlay
-            onEnded={closeReveal}
-          />
-
-          {showAnimation && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-4">
-              <div className="w-full h-full sm:aspect-video">
-                <CanvasAnimation
-                  amount={Number(onOpeningBox?.amount ?? 0)}
-                  tokenName={onOpeningBox?.asset ?? ''}
-                />
-              </div>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={closeReveal}
-            className="absolute right-6 top-6 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white transition hover:bg-black/80"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-      )} */}
     </motion.div>
   );
 }
