@@ -29,7 +29,7 @@ export function MysteryBox({
   onReplay,
 }: MysteryBoxProps) {
   const isMobile = useIsMobile();
-  const isOpened = isWeekActive && boxData.is_opened;
+  const isOpened = boxData.is_opened;
   const isCanOpen = isWeekActive && !isOpened && !isOpening;
 
   function handleClick() {

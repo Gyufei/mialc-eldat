@@ -23,8 +23,7 @@ const getDecimalPlaces = (value: number) => {
   return fraction ? fraction.length : 0;
 };
 
-const formatIntegerPart = (value: number) =>
-  Math.trunc(value).toLocaleString('en-US');
+const formatIntegerPart = (value: number) => Math.trunc(value).toLocaleString('en-US');
 
 export default function CanvasAnimation({ amount, tokenName }: CanvasAnimationProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -41,14 +40,6 @@ export default function CanvasAnimation({ amount, tokenName }: CanvasAnimationPr
     if (!ctx) {
       return;
     }
-
-    const getFontSizes = () => {
-      const isMobileNow = window.innerWidth < 768;
-      return {
-        amountFontSize: isMobileNow ? 100 : 168,
-        labelFontSize: isMobileNow ? 48 : 68,
-      };
-    };
 
     let currentWidth = 0;
     let currentHeight = 0;
@@ -80,8 +71,7 @@ export default function CanvasAnimation({ amount, tokenName }: CanvasAnimationPr
     const scale = Math.pow(10, decimalPlaces);
     const targetScaledValue = Math.round(amount * scale);
     const isSubUnitAmount = amount > 0 && amount < 1;
-    const startScaledValue =
-      isSubUnitAmount && targetScaledValue > 0 ? 1 : 0;
+    const startScaledValue = isSubUnitAmount && targetScaledValue > 0 ? 1 : 0;
     const formatter = (scaledValue: number) => {
       if (decimalPlaces === 0) {
         return formatIntegerPart(scaledValue);
@@ -112,22 +102,23 @@ export default function CanvasAnimation({ amount, tokenName }: CanvasAnimationPr
       const progress = Math.min((now - startTime) / duration, 1);
       const easedProgress = 1 - Math.pow(1 - progress, 3); // easeOutCubic
       const interpolated =
-        startScaledValue +
-        (targetScaledValue - startScaledValue) * easedProgress;
-      const animatedScaledValue =
-        progress < 1
-          ? Math.round(interpolated)
-          : targetScaledValue;
+        startScaledValue + (targetScaledValue - startScaledValue) * easedProgress;
+      const animatedScaledValue = progress < 1 ? Math.round(interpolated) : targetScaledValue;
       const safeScaledValue = Math.min(
         targetScaledValue,
-        Math.max(startScaledValue, animatedScaledValue),
+        Math.max(startScaledValue, animatedScaledValue)
       );
       const displayText =
         amount === 0 ? '0' : formatter(targetScaledValue === 0 ? 0 : safeScaledValue);
 
       ctx.clearRect(0, 0, currentWidth, currentHeight);
 
-      const { amountFontSize, labelFontSize } = getFontSizes();
+      // 根据对话框中的实际可用尺寸自适应字号，避免在不同设备/窗口尺寸下字体过大
+      const isMobileNow = window.innerWidth < 768;
+      const baseSize = Math.min(currentWidth, currentHeight);
+      const amountFontSize = isMobileNow ? 48 : baseSize * 0.22;
+      const labelFontSize = baseSize * 0.125 * 0.75;
+
       ctx.font = `800 ${amountFontSize}px 'Britti Sans', 'Inter', sans-serif`;
       const textMetrics = ctx.measureText(displayText);
       const ascent = textMetrics.fontBoundingBoxAscent ?? 96;
@@ -149,7 +140,8 @@ export default function CanvasAnimation({ amount, tokenName }: CanvasAnimationPr
       ctx.fillStyle = gradient;
       ctx.fillText(displayText, currentWidth / 2, currentHeight / 2);
 
-      const labelBaselineY = textBottom + (currentHeight * 0.11);
+      // const labelBaselineY = textBottom + currentHeight * 0.128;
+      const labelBaselineY = isMobileNow ? currentHeight * 0.7 : currentHeight * 0.755;
       ctx.font = `800 ${labelFontSize}px 'CommitMono', 'Inter', sans-serif`;
       const labelMetrics = ctx.measureText(`$${tokenName}`);
       const labelAscent = labelMetrics.fontBoundingBoxAscent ?? 54;
@@ -163,8 +155,7 @@ export default function CanvasAnimation({ amount, tokenName }: CanvasAnimationPr
       labelGradient.addColorStop(1, '#6A63F3');
       ctx.lineWidth = 12;
       ctx.strokeStyle = '#05000F';
-      
-      const isMobileNow = window.innerWidth < 768;
+
       const labelX = isMobileNow ? currentWidth / 2 : currentWidth * 0.92;
       ctx.textAlign = isMobileNow ? 'center' : 'right';
       ctx.textBaseline = 'bottom';

@@ -131,8 +131,8 @@ export default function ClaimBoxes() {
       clearTimeout(animationTimerRef.current);
       animationTimerRef.current = null;
     }
-    setShowAnimation(false);
     setIsRevealVisible(false);
+    setOnOpeningBoxId(null);
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.currentTime = 0;
@@ -343,7 +343,17 @@ export default function ClaimBoxes() {
         </div>
       </div>
 
-      <Dialog open={isRevealVisible} onOpenChange={setIsRevealVisible}>
+      <Dialog
+        open={isRevealVisible}
+        onOpenChange={(opened: boolean) => {
+          if (opened) {
+            setIsRevealVisible(true);
+          } else {
+            setIsRevealVisible(false);
+            setOnOpeningBoxId(null);
+          }
+        }}
+      >
         <DialogContent
           showCloseButton={false}
           onOpenAutoFocus={(e) => e.preventDefault()}
@@ -357,7 +367,7 @@ export default function ClaimBoxes() {
               playsInline
               muted
               autoPlay
-              onEnded={closeReveal}
+              // onEnded={closeReveal}
             />
           </div>
 
