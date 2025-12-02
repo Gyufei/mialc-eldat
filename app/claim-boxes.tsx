@@ -5,6 +5,16 @@ import { toast } from 'sonner';
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import {
+  Input as MediaInput,
+  BlobSource,
+  Output,
+  Mp4OutputFormat,
+  BufferTarget,
+  Conversion,
+  WEBM,
+} from 'mediabunny';
+
 import { Button } from '@/components/ui/button';
 import {
   Carousel,
@@ -88,6 +98,7 @@ export default function ClaimBoxes() {
 
   // 录制相关
   const [isRecording, setIsRecording] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<BlobPart[]>([]);
@@ -322,8 +333,8 @@ export default function ClaimBoxes() {
     }
   }, []);
 
-  const handleDownloadVideo = () => {
-    if (isRecording) {
+  const handleDownloadVideo = async () => {
+    if (isRecording || isConverting) {
       toast.info('video is generating, please wait...');
       return;
     }
@@ -334,12 +345,55 @@ export default function ClaimBoxes() {
       return;
     }
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'tadle-reveal.webm';
-    a.click();
-    URL.revokeObjectURL(url);
+    // 使用 Mediabunny 将 webm 转码为 mp4 后再下载
+    try {
+      setIsConverting(true);
+      toast.info('converting video to MP4, please wait...');
+
+      const inputOptions = {
+        source: new BlobSource(blob),
+        formats: [WEBM],
+      } as unknown as ConstructorParameters<typeof MediaInput>[0];
+      const input = new MediaInput(inputOptions);
+
+      const bufferTarget = new BufferTarget();
+      const output = new Output({
+        format: new Mp4OutputFormat(),
+        target: bufferTarget,
+      });
+
+      const conversion = await Conversion.init({ input, output });
+
+      if (!conversion.isValid) {
+        toast.error('video conversion failed');
+        setIsConverting(false);
+        return;
+      }
+
+      await conversion.execute();
+
+      const { buffer } = bufferTarget;
+      if (!buffer) {
+        toast.error('video conversion failed');
+        setIsConverting(false);
+        return;
+      }
+
+      const mp4Blob = new Blob([buffer], { type: 'video/mp4' });
+      const url = URL.createObjectURL(mp4Blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'tadle-reveal.mp4';
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast.success('video downloaded as MP4');
+    } catch (error) {
+      console.error(error);
+      toast.error('video conversion error');
+    } finally {
+      setIsConverting(false);
+    }
   };
 
   const handleOpenBox = (boxId: string) => {
