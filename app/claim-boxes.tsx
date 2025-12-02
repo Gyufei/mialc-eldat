@@ -79,11 +79,20 @@ export default function ClaimBoxes() {
   const [selectedSeasonIndex, setSelectedSeasonIndex] = useState<number>(CURRENT_SEASON);
 
   const [isRevealVisible, setIsRevealVisible] = useState(false);
-  const [showAnimation, setShowAnimation] = useState(false);
+  const [_showAnimation, setShowAnimation] = useState(false);
   const [showOpBtn, setShowOpBtn] = useState(false);
+  const [revealSessionId, setRevealSessionId] = useState(0);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const animationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const opBtnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 录制相关
+  const [isRecording, setIsRecording] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<BlobPart[]>([]);
+  const recordedBlobRef = useRef<Blob | null>(null);
+  const [videoElementForCanvas, setVideoElementForCanvas] = useState<HTMLVideoElement | null>(null);
 
   const { data: airDropData } = useAirdrop() as { data: AirDropData };
 
@@ -142,10 +151,26 @@ export default function ClaimBoxes() {
     setIsRevealVisible(false);
     setOnOpeningBoxId(null);
     setShowOpBtn(false);
+    setIsRecording(false);
+
+    // 关闭弹窗时停止录制但不触发下载，并清理录制状态
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.onstop = null;
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
+    }
+    mediaRecorderRef.current = null;
+    recordedChunksRef.current = [];
+    recordedBlobRef.current = null;
+
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.currentTime = 0;
     }
+
+    // 清空当前 canvas 引用，下一次打开时通过重新挂载组件获得全新的 canvas
+    canvasRef.current = null;
+    setVideoElementForCanvas(null);
   }, []);
 
   const openReveal = useCallback(() => {
@@ -159,6 +184,8 @@ export default function ClaimBoxes() {
     }
     setShowAnimation(false);
     setShowOpBtn(false);
+    // 每次打开都递增一次，强制重新挂载隐藏 video + CanvasAnimation，隔离上一次播放状态
+    setRevealSessionId((prev) => prev + 1);
     setIsRevealVisible(true);
   }, []);
 
@@ -181,7 +208,7 @@ export default function ClaimBoxes() {
 
     opBtnTimerRef.current = setTimeout(() => {
       setShowOpBtn(true);
-    }, 6500);
+    }, 8500);
 
     return () => {
       if (animationTimerRef.current) {
@@ -238,6 +265,82 @@ export default function ClaimBoxes() {
     if (carouselApi.selectedScrollSnap() === targetIndex) return;
     carouselApi.scrollTo(targetIndex);
   }, [carouselApi, currentWeek, withUnReachedSeasonBoxes]);
+
+  const startRecording = useCallback((canvas: HTMLCanvasElement) => {
+    if (typeof window === 'undefined') return;
+    if (!('MediaRecorder' in window)) {
+      console.error('recording is not supported by your browser');
+      return;
+    }
+
+    try {
+      const stream = canvas.captureStream(30);
+
+      let mimeType = 'video/webm;codecs=vp9';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'video/webm;codecs=vp8';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'video/webm';
+        }
+      }
+
+      const recorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = recorder;
+      recordedChunksRef.current = [];
+      recordedBlobRef.current = null;
+      setIsRecording(true);
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        try {
+          const blob = new Blob(recordedChunksRef.current, { type: recorder.mimeType });
+          recordedBlobRef.current = blob;
+          setIsRecording(false);
+        } catch (error) {
+          console.error(error);
+          setIsRecording(false);
+        }
+      };
+
+      recorder.start();
+
+      // 录制整段流程：前面的视频 + 6.5s 后的数字动画，这里简单录制 9 秒
+      setTimeout(() => {
+        if (recorder.state !== 'inactive') {
+          recorder.stop();
+        }
+      }, 9000);
+    } catch (error) {
+      console.error(error);
+      setIsRecording(false);
+      toast.error('error when recording video');
+    }
+  }, []);
+
+  const handleDownloadVideo = () => {
+    if (isRecording) {
+      toast.info('video is generating, please wait...');
+      return;
+    }
+
+    const blob = recordedBlobRef.current;
+    if (!blob) {
+      toast.error('video generation failed');
+      return;
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tadle-reveal.webm';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const handleOpenBox = (boxId: string) => {
     setOnOpeningBoxId(boxId);
@@ -373,8 +476,7 @@ export default function ClaimBoxes() {
           if (opened) {
             setIsRevealVisible(true);
           } else {
-            setIsRevealVisible(false);
-            setOnOpeningBoxId(null);
+            closeReveal();
           }
         }}
       >
@@ -383,28 +485,40 @@ export default function ClaimBoxes() {
           onOpenAutoFocus={(e) => e.preventDefault()}
           className="w-full p-0 border-0 overflow-hidden max-w-[min(calc((100vh-2rem)*390/800),calc(100vw-2rem))] max-h-[calc(100vh-2rem)] aspect-390/800 sm:aspect-video sm:max-w-[min(calc((100vh-2rem)*16/9),calc(100vw-2rem),1920px)] sm:max-h-[calc(100vh-2rem)]"
         >
-          <div className="relative w-full h-full">
+          <div key={revealSessionId} className="relative w-full h-full">
+            {/* 隐藏的视频元素，仅用于提供帧数据给 canvas */}
             <video
               ref={videoRef}
               src="/video/1-4.mp4"
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-cover opacity-0 pointer-events-none"
               playsInline
               muted
               autoPlay
-              // onEnded={closeReveal}
+              onLoadedData={() => {
+                if (videoRef.current) {
+                  setVideoElementForCanvas(videoRef.current);
+                }
+              }}
             />
-          </div>
 
-          {showAnimation && (
+            {/* 可见的 canvas：先显示视频，6.5 秒后再叠加数字动画 */}
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
               <div className="w-full h-full sm:aspect-video">
                 <CanvasAnimation
                   amount={Number(onOpeningBox?.amount ?? 0)}
                   tokenName={onOpeningBox?.asset ?? ''}
+                  videoElement={videoElementForCanvas ?? undefined}
+                  overlayDelayMs={6500}
+                  onCanvasReady={(canvas) => {
+                    canvasRef.current = canvas;
+                    if (canvas && isRevealVisible && !isRecording && !recordedBlobRef.current) {
+                      startRecording(canvas);
+                    }
+                  }}
                 />
               </div>
             </div>
-          )}
+          </div>
 
           {showOpBtn && (
             <motion.div
@@ -423,9 +537,12 @@ export default function ClaimBoxes() {
                     className="bg-black text-white hover:bg-black/80 flex-1 max-w-45 flex flex-row gap-2 items-center"
                   >
                     Share On
-                    <XTwitter style={{ width: 16, height: 16 }} />
+                    <XTwitter style={{ width: 'auto !important', height: 16 }} />
                   </Button>
-                  <Button className="bg-black hover:bg-black/80 text-white flex-1 max-w-45 flex flex-row gap-2 items-center">
+                  <Button
+                    onClick={handleDownloadVideo}
+                    className="bg-black hover:bg-black/80 text-white flex-1 max-w-45 flex flex-row gap-2 items-center"
+                  >
                     <Download size="sm" color="#fff" className="size-4" />
                     Download Video
                   </Button>

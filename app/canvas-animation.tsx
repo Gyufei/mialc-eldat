@@ -5,6 +5,18 @@ import { useEffect, useRef } from 'react';
 type CanvasAnimationProps = {
   amount: number;
   tokenName: string;
+  /**
+   * 可选的视频元素，会在每一帧绘制到 canvas 作为背景。
+   */
+  videoElement?: HTMLVideoElement | null;
+  /**
+   * canvas 就绪时的回调，方便外部通过 captureStream 做录制。
+   */
+  onCanvasReady?: (canvas: HTMLCanvasElement | null) => void;
+  /**
+   * 叠加数字动画的延迟时间（毫秒），用于前几秒只显示视频。
+   */
+  overlayDelayMs?: number;
 };
 
 const getDecimalPlaces = (value: number) => {
@@ -25,7 +37,13 @@ const getDecimalPlaces = (value: number) => {
 
 const formatIntegerPart = (value: number) => Math.trunc(value).toLocaleString('en-US');
 
-export default function CanvasAnimation({ amount, tokenName }: CanvasAnimationProps) {
+export default function CanvasAnimation({
+  amount,
+  tokenName,
+  videoElement,
+  onCanvasReady,
+  overlayDelayMs = 0,
+}: CanvasAnimationProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -40,6 +58,9 @@ export default function CanvasAnimation({ amount, tokenName }: CanvasAnimationPr
     if (!ctx) {
       return;
     }
+
+    // 将 canvas 暴露给外部（用于录制）
+    onCanvasReady?.(canvas);
 
     let currentWidth = 0;
     let currentHeight = 0;
@@ -66,6 +87,8 @@ export default function CanvasAnimation({ amount, tokenName }: CanvasAnimationPr
     updateCanvasSize();
 
     let animationFrameId: number;
+    // 避免在 overlayDelayMs 边界来回抖动：一旦进入 overlay 阶段，就不再退回
+    let hasOverlayStarted = false;
     const duration = 1500;
     const decimalPlaces = getDecimalPlaces(amount);
     const scale = Math.pow(10, decimalPlaces);
@@ -99,7 +122,48 @@ export default function CanvasAnimation({ amount, tokenName }: CanvasAnimationPr
       }
 
       const now = performance.now();
-      const progress = Math.min((now - startTime) / duration, 1);
+      const elapsed = now - startTime;
+
+      // 优先使用视频实际播放时间来控制叠加时机，避免加载/卡顿导致偏移
+      const playbackMs =
+        videoElement && !Number.isNaN(videoElement.currentTime)
+          ? videoElement.currentTime * 1000
+          : elapsed;
+
+      const isVideoReady = !!videoElement && videoElement.readyState >= 2;
+
+      // 阶段切换采用“闸门式”逻辑，避免在 overlayDelayMs 附近抖动
+      if (!hasOverlayStarted && playbackMs >= overlayDelayMs) {
+        hasOverlayStarted = true;
+      }
+
+      const shouldRenderOverlay = hasOverlayStarted;
+
+      // 如果当前这一帧既没法画视频、也不需要画文字，就不要清空画布，避免黑屏闪一下
+      if (!isVideoReady && !shouldRenderOverlay) {
+        animationFrameId = requestAnimationFrame(render);
+        return;
+      }
+
+      // 先清空画布
+      ctx.clearRect(0, 0, currentWidth, currentHeight);
+
+      // 每一帧都尝试绘制视频画面作为背景
+      if (isVideoReady) {
+        try {
+          ctx.drawImage(videoElement, 0, 0, currentWidth, currentHeight);
+        } catch {
+          // 某些情况下 drawImage 可能抛错（跨域、未准备好等），忽略即可
+        }
+      }
+
+      // 在 overlayDelayMs 之前，只渲染视频，不渲染文字
+      if (!shouldRenderOverlay) {
+        animationFrameId = requestAnimationFrame(render);
+        return;
+      }
+
+      const progress = Math.min((playbackMs - overlayDelayMs) / duration, 1);
       const easedProgress = 1 - Math.pow(1 - progress, 3); // easeOutCubic
       const interpolated =
         startScaledValue + (targetScaledValue - startScaledValue) * easedProgress;
@@ -110,8 +174,6 @@ export default function CanvasAnimation({ amount, tokenName }: CanvasAnimationPr
       );
       const displayText =
         amount === 0 ? '0' : formatter(targetScaledValue === 0 ? 0 : safeScaledValue);
-
-      ctx.clearRect(0, 0, currentWidth, currentHeight);
 
       // 根据对话框中的实际可用尺寸自适应字号，避免在不同设备/窗口尺寸下字体过大
       const isMobileNow = window.innerWidth < 768;
@@ -188,8 +250,10 @@ export default function CanvasAnimation({ amount, tokenName }: CanvasAnimationPr
       cancelAnimationFrame(animationFrameId);
       resizeObserver.disconnect();
       window.removeEventListener('resize', handleWindowResize);
+      // 卸载时通知外部 canvas 已失效
+      onCanvasReady?.(null);
     };
-  }, [amount, tokenName]);
+  }, [amount, tokenName, videoElement, overlayDelayMs, onCanvasReady]);
 
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%' }}>
