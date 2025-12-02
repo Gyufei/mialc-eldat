@@ -1,19 +1,18 @@
 import { usePrivy } from '@privy-io/react-auth';
 import { motion } from 'framer-motion';
-import { Download } from 'lucide-react';
+import { Download, Loader } from 'lucide-react';
+import {
+  BlobSource,
+  BufferTarget,
+  Conversion,
+  Input as MediaInput,
+  Mp4OutputFormat,
+  Output,
+  WEBM,
+} from 'mediabunny';
 import { toast } from 'sonner';
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-
-import {
-  Input as MediaInput,
-  BlobSource,
-  Output,
-  Mp4OutputFormat,
-  BufferTarget,
-  Conversion,
-  WEBM,
-} from 'mediabunny';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -335,7 +334,6 @@ export default function ClaimBoxes() {
 
   const handleDownloadVideo = async () => {
     if (isRecording || isConverting) {
-      toast.info('video is generating, please wait...');
       return;
     }
 
@@ -348,7 +346,6 @@ export default function ClaimBoxes() {
     // 使用 Mediabunny 将 webm 转码为 mp4 后再下载
     try {
       setIsConverting(true);
-      toast.info('converting video to MP4, please wait...');
 
       const inputOptions = {
         source: new BlobSource(blob),
@@ -386,8 +383,6 @@ export default function ClaimBoxes() {
       a.download = 'tadle-reveal.mp4';
       a.click();
       URL.revokeObjectURL(url);
-
-      toast.success('video downloaded as MP4');
     } catch (error) {
       console.error(error);
       toast.error('video conversion error');
@@ -595,10 +590,15 @@ export default function ClaimBoxes() {
                   </Button>
                   <Button
                     onClick={handleDownloadVideo}
+                    disabled={isRecording || isConverting || !recordedBlobRef.current}
                     className="bg-black hover:bg-black/80 text-white flex-1 max-w-45 flex flex-row gap-2 items-center"
                   >
-                    <Download size="sm" color="#fff" className="size-4" />
-                    Download Video
+                    {isRecording || isConverting ? (
+                      <Loader className="size-4 animate-spin" color="#fff" />
+                    ) : (
+                      <Download size="sm" color="#fff" className="size-4" />
+                    )}
+                    <span>Download Video</span>
                   </Button>
                 </div>
                 <button
