@@ -15,7 +15,6 @@ import Footer from './footer';
 import Header from './header';
 import Login from './login';
 import Profile from './profile';
-import SaveBtn from './save-btn';
 
 // import Profile from './profile';
 
@@ -165,7 +164,6 @@ export default function Home() {
         )}
         <Footer />
       </div>
-      {!isAirdropActive && <SaveBtn />}
     </main>
   );
 }
