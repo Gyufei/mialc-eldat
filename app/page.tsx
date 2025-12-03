@@ -81,6 +81,28 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const STORAGE_KEY = 'privy:token';
+    let currentToken = window.localStorage.getItem(STORAGE_KEY);
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== STORAGE_KEY) return;
+
+      if (event.newValue !== currentToken) {
+        currentToken = event.newValue;
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
   if (!ready) {
     return (
       <main className="relative flex justify-center items-center min-h-screen w-full bg-background">
