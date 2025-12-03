@@ -284,7 +284,26 @@ export default function ClaimBoxes() {
     }
 
     try {
-      const stream = canvas.captureStream(30);
+      // 创建离屏 canvas，固定尺寸为 1920x1080
+      const RECORDING_WIDTH = 1920;
+      const RECORDING_HEIGHT = 1080;
+      const offscreenCanvas = document.createElement('canvas');
+      offscreenCanvas.width = RECORDING_WIDTH;
+      offscreenCanvas.height = RECORDING_HEIGHT;
+      const offscreenCtx = offscreenCanvas.getContext('2d');
+      
+      if (!offscreenCtx) {
+        console.error('Failed to get offscreen canvas context');
+        setIsRecording(false);
+        return;
+      }
+
+      // 设置离屏 canvas 的绘制质量
+      offscreenCtx.imageSmoothingEnabled = true;
+      offscreenCtx.imageSmoothingQuality = 'high';
+
+      // 从离屏 canvas 捕获流
+      const stream = offscreenCanvas.captureStream(30);
 
       let mimeType = 'video/webm;codecs=vp9';
       if (!MediaRecorder.isTypeSupported(mimeType)) {
@@ -319,9 +338,44 @@ export default function ClaimBoxes() {
 
       recorder.start();
 
+      // 每一帧将主 canvas 的内容绘制到离屏 canvas
+      const drawFrame = () => {
+        if (recorder.state === 'recording') {
+          // 清空离屏 canvas
+          offscreenCtx.clearRect(0, 0, RECORDING_WIDTH, RECORDING_HEIGHT);
+          
+          // 使用 canvas 的实际像素尺寸
+          const sourceWidth = canvas.width;
+          const sourceHeight = canvas.height;
+          
+          if (sourceWidth > 0 && sourceHeight > 0) {
+            // 计算缩放比例，保持宽高比，使用 cover 策略（填满整个区域，可能裁剪边缘）
+            const scale = Math.max(RECORDING_WIDTH / sourceWidth, RECORDING_HEIGHT / sourceHeight);
+            const scaledWidth = sourceWidth * scale;
+            const scaledHeight = sourceHeight * scale;
+            const x = (RECORDING_WIDTH - scaledWidth) / 2;
+            const y = (RECORDING_HEIGHT - scaledHeight) / 2;
+            
+            // 将主 canvas 的内容绘制到离屏 canvas
+            offscreenCtx.drawImage(canvas, x, y, scaledWidth, scaledHeight);
+          }
+        }
+      };
+
+      // 使用 requestAnimationFrame 同步绘制
+      let animationFrameId: number;
+      const renderLoop = () => {
+        drawFrame();
+        if (recorder.state === 'recording') {
+          animationFrameId = requestAnimationFrame(renderLoop);
+        }
+      };
+      renderLoop();
+
       // 录制整段流程：前面的视频 + 6.5s 后的数字动画，这里简单录制 9 秒
       setTimeout(() => {
         if (recorder.state !== 'inactive') {
+          cancelAnimationFrame(animationFrameId);
           recorder.stop();
         }
       }, 9000);
@@ -354,6 +408,8 @@ export default function ClaimBoxes() {
       const input = new MediaInput(inputOptions);
 
       const bufferTarget = new BufferTarget();
+      // Mp4OutputFormat 默认使用 H.264 编码
+      // 分辨率已在录制时通过离屏 canvas 设置为 1920x1080
       const output = new Output({
         format: new Mp4OutputFormat(),
         target: bufferTarget,
