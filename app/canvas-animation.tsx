@@ -19,6 +19,11 @@ type CanvasAnimationProps = {
   overlayDelayMs?: number;
 };
 
+// 移动端视频在画布上的水平偏移比例（仅用于视频画面，不影响文字居中）
+const MOBILE_VIDEO_X_OFFSET_RATIO = 0.085;
+// 移动端文字在画布中心线基础上的微调比例（负值表示整体稍微往左）
+const MOBILE_TEXT_CENTER_OFFSET_RATIO = -0.02;
+
 const getDecimalPlaces = (value: number) => {
   if (!Number.isFinite(value)) {
     return 0;
@@ -165,7 +170,7 @@ export default function CanvasAnimation({
 
               // 先按居中计算，再额外向左偏移一小段比例（比如 8% 的画布宽度）
               const baseDx = (currentWidth - drawW) / 2;
-              const dxOffset = currentWidth * 0.09;
+              const dxOffset = currentWidth * MOBILE_VIDEO_X_OFFSET_RATIO;
               const dx = baseDx - dxOffset;
 
               const dy = (currentHeight - drawH) / 2;
@@ -225,13 +230,18 @@ export default function CanvasAnimation({
       ctx.strokeStyle = '#05000F';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.strokeText(displayText, currentWidth / 2, currentHeight / 2);
+
+      // 桌面端：严格以画布中心对齐；移动端：在画布中心基础上整体微调一点点偏左
+      const amountCenterX = isMobileNow
+        ? currentWidth / 2 + currentWidth * MOBILE_TEXT_CENTER_OFFSET_RATIO
+        : currentWidth / 2;
+      ctx.strokeText(displayText, amountCenterX, currentHeight / 2);
       ctx.fillStyle = gradient;
-      ctx.fillText(displayText, currentWidth / 2, currentHeight / 2);
+      ctx.fillText(displayText, amountCenterX, currentHeight / 2);
 
       // const labelBaselineY = textBottom + currentHeight * 0.128;
       const labelBaselineY = isMobileNow ? currentHeight * 0.7 : currentHeight * 0.755;
-      ctx.font = `800 ${labelFontSize}px 'CommitMono', 'Inter', sans-serif`;
+      ctx.font = `800 ${labelFontSize}px 'Aeonik', 'Inter', sans-serif`;
       const labelMetrics = ctx.measureText(`$${tokenName}`);
       const labelAscent = labelMetrics.fontBoundingBoxAscent ?? 54;
       const labelDescent = labelMetrics.fontBoundingBoxDescent ?? 18;
@@ -245,7 +255,10 @@ export default function CanvasAnimation({
       ctx.lineWidth = 12;
       ctx.strokeStyle = '#05000F';
 
-      const labelX = isMobileNow ? currentWidth / 2 : currentWidth * 0.92;
+      // 移动端：tokenName 与 amount 使用同样的中心偏移；桌面端保留原逻辑靠右
+      const labelX = isMobileNow
+        ? currentWidth / 2 + currentWidth * MOBILE_TEXT_CENTER_OFFSET_RATIO
+        : currentWidth * 0.92;
       ctx.textAlign = isMobileNow ? 'center' : 'right';
       ctx.textBaseline = 'bottom';
       ctx.strokeText(`$${tokenName}`, labelX, labelBaselineY);

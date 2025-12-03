@@ -38,7 +38,7 @@ export default function Header() {
           <div className="flex items-center justify-between h-16">
             <Link href="/">
               <span
-                className="inline-flex shrink-0"
+                className="inline-flex shrink-0 mt-5"
                 draggable="false"
                 style={{ width: 36, height: 36 }}
               >

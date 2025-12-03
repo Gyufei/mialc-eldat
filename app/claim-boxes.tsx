@@ -286,9 +286,15 @@ export default function ClaimBoxes() {
     }
 
     try {
-      // 创建离屏 canvas，固定尺寸为 1920x1080
-      const RECORDING_WIDTH = 1920;
-      const RECORDING_HEIGHT = 1080;
+      // 录制分辨率：
+      // - PC：固定 1920x1080（方便分享到各类平台）
+      // - 移动端：直接使用当前画布的实际像素尺寸（画布是什么样，录制就是什么样）
+      const canvasPixelWidth = canvas.width;
+      const canvasPixelHeight = canvas.height;
+      const RECORDING_WIDTH =
+        isMobile && canvasPixelWidth > 0 ? canvasPixelWidth : 1920;
+      const RECORDING_HEIGHT =
+        isMobile && canvasPixelHeight > 0 ? canvasPixelHeight : 1080;
       const offscreenCanvas = document.createElement('canvas');
       offscreenCanvas.width = RECORDING_WIDTH;
       offscreenCanvas.height = RECORDING_HEIGHT;
@@ -399,7 +405,7 @@ export default function ClaimBoxes() {
       setIsRecording(false);
       toast.error('error when recording video');
     }
-  }, []);
+  }, [isMobile]);
 
   const handleDownloadVideo = async () => {
     if (isRecording || isConverting) {
@@ -692,7 +698,7 @@ export default function ClaimBoxes() {
                 </div>
                 <button
                   onClick={closeReveal}
-                  className="w-fit inline-flex items-center justify-center gap-2 whitespace-nowrap focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer font-britti-sans transition-all duration-200 active:scale-[0.98] disabled:active:scale-100 relative text-white text-sm font-medium leading-5 rounded-full bg-radial-tertiary [&>*]:relative [&>*]:z-10 disabled:opacity-50 h-9.5 px-4 py-2 group"
+                  className="w-fit inline-flex items-center justify-center gap-2 whitespace-nowrap focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer font-britti-sans transition-all duration-200 active:scale-[0.98] disabled:active:scale-100 relative text-white text-sm font-medium leading-5 rounded-full bg-[#5F57F2] [&>*]:relative [&>*]:z-10 disabled:opacity-50 h-9.5 px-4 py-2 group"
                 >
                   Continue
                 </button>
