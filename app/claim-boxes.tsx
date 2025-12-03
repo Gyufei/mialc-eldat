@@ -1,4 +1,5 @@
 import { usePrivy } from '@privy-io/react-auth';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { motion } from 'framer-motion';
 import { Download, Loader } from 'lucide-react';
 import {
@@ -23,7 +24,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from '@/components/ui/carousel';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
 import useAirdrop, { AirDropBox, AirDropData } from '@/lib/use-airdrop';
 import { useClaim } from '@/lib/use-claim';
@@ -94,6 +95,7 @@ export default function ClaimBoxes() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const animationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const opBtnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const canvasContainerRef = useRef<HTMLDivElement | null>(null);
 
   // 录制相关
   const [isRecording, setIsRecording] = useState(false);
@@ -104,7 +106,6 @@ export default function ClaimBoxes() {
   const recordedBlobRef = useRef<Blob | null>(null);
   const recordedMimeTypeRef = useRef<string>('');
   const [videoElementForCanvas, setVideoElementForCanvas] = useState<HTMLVideoElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const { data: airDropData } = useAirdrop() as { data: AirDropData };
 
@@ -291,14 +292,9 @@ export default function ClaimBoxes() {
         // 录制分辨率：
         // - PC：固定 1920x1080（方便分享到各类平台）
         // - 移动端：直接使用当前画布的实际像素尺寸（画布是什么样，录制就是什么样）
-        const containerRect = containerRef.current?.getBoundingClientRect();
+        const containerRect = canvasContainerRef.current?.getBoundingClientRect();
         const canvasPixelWidth = containerRect?.width ?? canvas.width;
         const canvasPixelHeight = containerRect?.height ?? canvas.height;
-        // const RECORDING_WIDTH = isMobile && canvasPixelWidth > 0 ? canvasPixelWidth : 1920;
-        // const RECORDING_HEIGHT = isMobile && canvasPixelHeight > 0 ? canvasPixelHeight : 1080;
-        console.log(canvasPixelWidth, window.innerWidth);
-        console.log(canvasPixelHeight, window.innerHeight);
-        console.log(window.devicePixelRatio);
 
         const RECORDING_WIDTH = isMobile ? window.devicePixelRatio * canvasPixelWidth : 1920;
         const RECORDING_HEIGHT = isMobile ? window.devicePixelRatio * canvasPixelHeight : 1080;
@@ -377,10 +373,12 @@ export default function ClaimBoxes() {
             const sourceHeight = canvas.height;
 
             if (sourceWidth > 0 && sourceHeight > 0) {
-              // 计算缩放比例，保持宽高比，使用 cover 策略（填满整个区域，可能裁剪边缘）
-              // const scale = Math.max(RECORDING_WIDTH / sourceWidth, RECORDING_HEIGHT / sourceHeight);
-              const scaledWidth = sourceWidth; // * scale;
-              const scaledHeight = sourceHeight; // * scale;
+              const scale = Math.max(
+                RECORDING_WIDTH / sourceWidth,
+                RECORDING_HEIGHT / sourceHeight
+              );
+              const scaledWidth = isMobile ? sourceWidth : sourceWidth * scale;
+              const scaledHeight = isMobile ? sourceHeight : sourceHeight * scale;
               const x = (RECORDING_WIDTH - scaledWidth) / 2;
               const y = (RECORDING_HEIGHT - scaledHeight) / 2;
 
@@ -550,7 +548,7 @@ export default function ClaimBoxes() {
                   seasonIndex={index + 1}
                   isSelected={selectedSeasonIndex === index + 1}
                   onSelectSeason={() => setSelectedSeasonIndex(index + 1)}
-                  totalWeeks={Math.max(...withUnReachedSeasonBoxes.map((box) => box.weeks))}
+                  totalWeeks={8}
                   currentWeek={currentWeek}
                   onChangeCurrentWeek={handleChangeCurrentWeek}
                 />
@@ -638,6 +636,9 @@ export default function ClaimBoxes() {
           onOpenAutoFocus={(e) => e.preventDefault()}
           className="w-full p-0 border-0 overflow-hidden max-w-[min(calc((100vh-2rem)*390/800),calc(100vw-2rem))] max-h-[calc(100vh-2rem)] aspect-390/800 sm:aspect-video sm:max-w-[min(calc((100vh-2rem)*16/9),calc(100vw-2rem),1920px)] sm:max-h-[calc(100vh-2rem)]"
         >
+          <VisuallyHidden>
+            <DialogTitle>Tadle Reveal</DialogTitle>
+          </VisuallyHidden>
           <div key={revealSessionId} className="relative w-full h-full">
             {/* 隐藏的视频元素，仅用于提供帧数据给 canvas */}
             <video
@@ -656,7 +657,7 @@ export default function ClaimBoxes() {
 
             {/* 可见的 canvas：先显示视频，6.5 秒后再叠加数字动画 */}
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-              <div ref={containerRef} className="w-full h-full sm:aspect-video">
+              <div ref={canvasContainerRef} className="w-full h-full sm:aspect-video">
                 <CanvasAnimation
                   amount={Number(onOpeningBox?.amount ?? 0)}
                   tokenName={onOpeningBox?.asset ?? ''}
