@@ -293,7 +293,7 @@ export default function ClaimBoxes() {
       offscreenCanvas.width = RECORDING_WIDTH;
       offscreenCanvas.height = RECORDING_HEIGHT;
       const offscreenCtx = offscreenCanvas.getContext('2d');
-      
+
       if (!offscreenCtx) {
         console.error('Failed to get offscreen canvas context');
         setIsRecording(false);
@@ -358,11 +358,11 @@ export default function ClaimBoxes() {
         if (recorder.state === 'recording') {
           // 清空离屏 canvas
           offscreenCtx.clearRect(0, 0, RECORDING_WIDTH, RECORDING_HEIGHT);
-          
+
           // 使用 canvas 的实际像素尺寸
           const sourceWidth = canvas.width;
           const sourceHeight = canvas.height;
-          
+
           if (sourceWidth > 0 && sourceHeight > 0) {
             // 计算缩放比例，保持宽高比，使用 cover 策略（填满整个区域，可能裁剪边缘）
             const scale = Math.max(RECORDING_WIDTH / sourceWidth, RECORDING_HEIGHT / sourceHeight);
@@ -370,7 +370,7 @@ export default function ClaimBoxes() {
             const scaledHeight = sourceHeight * scale;
             const x = (RECORDING_WIDTH - scaledWidth) / 2;
             const y = (RECORDING_HEIGHT - scaledHeight) / 2;
-            
+
             // 将主 canvas 的内容绘制到离屏 canvas
             offscreenCtx.drawImage(canvas, x, y, scaledWidth, scaledHeight);
           }
@@ -535,7 +535,7 @@ export default function ClaimBoxes() {
                   seasonIndex={index + 1}
                   isSelected={selectedSeasonIndex === index + 1}
                   onSelectSeason={() => setSelectedSeasonIndex(index + 1)}
-                  totalWeeks={8}
+                  totalWeeks={Math.max(...withUnReachedSeasonBoxes.map((box) => box.weeks))}
                   currentWeek={currentWeek}
                   onChangeCurrentWeek={handleChangeCurrentWeek}
                 />
