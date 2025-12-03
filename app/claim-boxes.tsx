@@ -102,6 +102,7 @@ export default function ClaimBoxes() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<BlobPart[]>([]);
   const recordedBlobRef = useRef<Blob | null>(null);
+  const recordedMimeTypeRef = useRef<string>('');
   const [videoElementForCanvas, setVideoElementForCanvas] = useState<HTMLVideoElement | null>(null);
 
   const { data: airDropData } = useAirdrop() as { data: AirDropData };
@@ -172,6 +173,7 @@ export default function ClaimBoxes() {
     mediaRecorderRef.current = null;
     recordedChunksRef.current = [];
     recordedBlobRef.current = null;
+    recordedMimeTypeRef.current = '';
 
     if (videoRef.current) {
       videoRef.current.pause();
@@ -305,11 +307,23 @@ export default function ClaimBoxes() {
       // 从离屏 canvas 捕获流
       const stream = offscreenCanvas.captureStream(30);
 
-      let mimeType = 'video/webm;codecs=vp9';
+      // 优先尝试使用 MP4 (H.264 + AAC)，如果不支持则回退到 WebM
+      let mimeType = 'video/mp4;codecs=avc1.42E01E,mp4a.40.2'; // H.264 + AAC
       if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = 'video/webm;codecs=vp8';
+        // 尝试其他 H.264 变体
+        mimeType = 'video/mp4;codecs=h264,aac';
         if (!MediaRecorder.isTypeSupported(mimeType)) {
-          mimeType = 'video/webm';
+          mimeType = 'video/mp4';
+          if (!MediaRecorder.isTypeSupported(mimeType)) {
+            // 回退到 WebM
+            mimeType = 'video/webm;codecs=vp9';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+              mimeType = 'video/webm;codecs=vp8';
+              if (!MediaRecorder.isTypeSupported(mimeType)) {
+                mimeType = 'video/webm';
+              }
+            }
+          }
         }
       }
 
@@ -329,6 +343,7 @@ export default function ClaimBoxes() {
         try {
           const blob = new Blob(recordedChunksRef.current, { type: recorder.mimeType });
           recordedBlobRef.current = blob;
+          recordedMimeTypeRef.current = recorder.mimeType;
           setIsRecording(false);
         } catch (error) {
           console.error(error);
@@ -397,7 +412,25 @@ export default function ClaimBoxes() {
       return;
     }
 
-    // 使用 Mediabunny 将 webm 转码为 mp4 后再下载
+    const mimeType = recordedMimeTypeRef.current;
+
+    // 如果已经是 MP4 格式（H.264），直接下载，无需转换
+    if (mimeType.startsWith('video/mp4')) {
+      try {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'tadle-reveal.mp4';
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error(error);
+        toast.error('video download error');
+      }
+      return;
+    }
+
+    // 如果是 WebM 格式，使用 Mediabunny 转换为 MP4 (H.264)
     try {
       setIsConverting(true);
 
