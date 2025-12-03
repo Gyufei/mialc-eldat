@@ -104,6 +104,7 @@ export default function ClaimBoxes() {
   const recordedBlobRef = useRef<Blob | null>(null);
   const recordedMimeTypeRef = useRef<string>('');
   const [videoElementForCanvas, setVideoElementForCanvas] = useState<HTMLVideoElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const { data: airDropData } = useAirdrop() as { data: AirDropData };
 
@@ -278,134 +279,142 @@ export default function ClaimBoxes() {
     carouselApi.scrollTo(targetIndex);
   }, [carouselApi, currentWeek, withUnReachedSeasonBoxes]);
 
-  const startRecording = useCallback((canvas: HTMLCanvasElement) => {
-    if (typeof window === 'undefined') return;
-    if (!('MediaRecorder' in window)) {
-      console.error('recording is not supported by your browser');
-      return;
-    }
-
-    try {
-      // 录制分辨率：
-      // - PC：固定 1920x1080（方便分享到各类平台）
-      // - 移动端：直接使用当前画布的实际像素尺寸（画布是什么样，录制就是什么样）
-      const canvasPixelWidth = canvas.width;
-      const canvasPixelHeight = canvas.height;
-      const RECORDING_WIDTH =
-        isMobile && canvasPixelWidth > 0 ? canvasPixelWidth : 1920;
-      const RECORDING_HEIGHT =
-        isMobile && canvasPixelHeight > 0 ? canvasPixelHeight : 1080;
-      const offscreenCanvas = document.createElement('canvas');
-      offscreenCanvas.width = RECORDING_WIDTH;
-      offscreenCanvas.height = RECORDING_HEIGHT;
-      const offscreenCtx = offscreenCanvas.getContext('2d');
-
-      if (!offscreenCtx) {
-        console.error('Failed to get offscreen canvas context');
-        setIsRecording(false);
+  const startRecording = useCallback(
+    (canvas: HTMLCanvasElement) => {
+      if (typeof window === 'undefined') return;
+      if (!('MediaRecorder' in window)) {
+        console.error('recording is not supported by your browser');
         return;
       }
 
-      // 设置离屏 canvas 的绘制质量
-      offscreenCtx.imageSmoothingEnabled = true;
-      offscreenCtx.imageSmoothingQuality = 'high';
+      try {
+        // 录制分辨率：
+        // - PC：固定 1920x1080（方便分享到各类平台）
+        // - 移动端：直接使用当前画布的实际像素尺寸（画布是什么样，录制就是什么样）
+        const containerRect = containerRef.current?.getBoundingClientRect();
+        const canvasPixelWidth = containerRect?.width ?? canvas.width;
+        const canvasPixelHeight = containerRect?.height ?? canvas.height;
+        // const RECORDING_WIDTH = isMobile && canvasPixelWidth > 0 ? canvasPixelWidth : 1920;
+        // const RECORDING_HEIGHT = isMobile && canvasPixelHeight > 0 ? canvasPixelHeight : 1080;
+        console.log(canvasPixelWidth, window.innerWidth);
+        console.log(canvasPixelHeight, window.innerHeight);
+        console.log(window.devicePixelRatio);
 
-      // 从离屏 canvas 捕获流
-      const stream = offscreenCanvas.captureStream(30);
+        const RECORDING_WIDTH = isMobile ? window.devicePixelRatio * canvasPixelWidth : 1920;
+        const RECORDING_HEIGHT = isMobile ? window.devicePixelRatio * canvasPixelHeight : 1080;
+        const offscreenCanvas = document.createElement('canvas');
+        offscreenCanvas.width = RECORDING_WIDTH;
+        offscreenCanvas.height = RECORDING_HEIGHT;
+        const offscreenCtx = offscreenCanvas.getContext('2d');
 
-      // 优先尝试使用 MP4 (H.264 + AAC)，如果不支持则回退到 WebM
-      let mimeType = 'video/mp4;codecs=avc1.42E01E,mp4a.40.2'; // H.264 + AAC
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        // 尝试其他 H.264 变体
-        mimeType = 'video/mp4;codecs=h264,aac';
+        if (!offscreenCtx) {
+          console.error('Failed to get offscreen canvas context');
+          setIsRecording(false);
+          return;
+        }
+
+        // 设置离屏 canvas 的绘制质量
+        offscreenCtx.imageSmoothingEnabled = true;
+        offscreenCtx.imageSmoothingQuality = 'high';
+
+        // 从离屏 canvas 捕获流
+        const stream = offscreenCanvas.captureStream(30);
+
+        // 优先尝试使用 MP4 (H.264 + AAC)，如果不支持则回退到 WebM
+        let mimeType = 'video/mp4;codecs=avc1.42E01E,mp4a.40.2'; // H.264 + AAC
         if (!MediaRecorder.isTypeSupported(mimeType)) {
-          mimeType = 'video/mp4';
+          // 尝试其他 H.264 变体
+          mimeType = 'video/mp4;codecs=h264,aac';
           if (!MediaRecorder.isTypeSupported(mimeType)) {
-            // 回退到 WebM
-            mimeType = 'video/webm;codecs=vp9';
+            mimeType = 'video/mp4';
             if (!MediaRecorder.isTypeSupported(mimeType)) {
-              mimeType = 'video/webm;codecs=vp8';
+              // 回退到 WebM
+              mimeType = 'video/webm;codecs=vp9';
               if (!MediaRecorder.isTypeSupported(mimeType)) {
-                mimeType = 'video/webm';
+                mimeType = 'video/webm;codecs=vp8';
+                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                  mimeType = 'video/webm';
+                }
               }
             }
           }
         }
-      }
 
-      const recorder = new MediaRecorder(stream, { mimeType });
-      mediaRecorderRef.current = recorder;
-      recordedChunksRef.current = [];
-      recordedBlobRef.current = null;
-      setIsRecording(true);
+        const recorder = new MediaRecorder(stream, { mimeType });
+        mediaRecorderRef.current = recorder;
+        recordedChunksRef.current = [];
+        recordedBlobRef.current = null;
+        setIsRecording(true);
 
-      recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) {
-          recordedChunksRef.current.push(event.data);
-        }
-      };
-
-      recorder.onstop = () => {
-        try {
-          const blob = new Blob(recordedChunksRef.current, { type: recorder.mimeType });
-          recordedBlobRef.current = blob;
-          recordedMimeTypeRef.current = recorder.mimeType;
-          setIsRecording(false);
-        } catch (error) {
-          console.error(error);
-          setIsRecording(false);
-        }
-      };
-
-      recorder.start();
-
-      // 每一帧将主 canvas 的内容绘制到离屏 canvas
-      const drawFrame = () => {
-        if (recorder.state === 'recording') {
-          // 清空离屏 canvas
-          offscreenCtx.clearRect(0, 0, RECORDING_WIDTH, RECORDING_HEIGHT);
-
-          // 使用 canvas 的实际像素尺寸
-          const sourceWidth = canvas.width;
-          const sourceHeight = canvas.height;
-
-          if (sourceWidth > 0 && sourceHeight > 0) {
-            // 计算缩放比例，保持宽高比，使用 cover 策略（填满整个区域，可能裁剪边缘）
-            const scale = Math.max(RECORDING_WIDTH / sourceWidth, RECORDING_HEIGHT / sourceHeight);
-            const scaledWidth = sourceWidth * scale;
-            const scaledHeight = sourceHeight * scale;
-            const x = (RECORDING_WIDTH - scaledWidth) / 2;
-            const y = (RECORDING_HEIGHT - scaledHeight) / 2;
-
-            // 将主 canvas 的内容绘制到离屏 canvas
-            offscreenCtx.drawImage(canvas, x, y, scaledWidth, scaledHeight);
+        recorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            recordedChunksRef.current.push(event.data);
           }
-        }
-      };
+        };
 
-      // 使用 requestAnimationFrame 同步绘制
-      let animationFrameId: number;
-      const renderLoop = () => {
-        drawFrame();
-        if (recorder.state === 'recording') {
-          animationFrameId = requestAnimationFrame(renderLoop);
-        }
-      };
-      renderLoop();
+        recorder.onstop = () => {
+          try {
+            const blob = new Blob(recordedChunksRef.current, { type: recorder.mimeType });
+            recordedBlobRef.current = blob;
+            recordedMimeTypeRef.current = recorder.mimeType;
+            setIsRecording(false);
+          } catch (error) {
+            console.error(error);
+            setIsRecording(false);
+          }
+        };
 
-      // 录制整段流程：前面的视频 + 6.5s 后的数字动画，这里简单录制 9 秒
-      setTimeout(() => {
-        if (recorder.state !== 'inactive') {
-          cancelAnimationFrame(animationFrameId);
-          recorder.stop();
-        }
-      }, 9000);
-    } catch (error) {
-      console.error(error);
-      setIsRecording(false);
-      toast.error('error when recording video');
-    }
-  }, [isMobile]);
+        recorder.start();
+
+        // 每一帧将主 canvas 的内容绘制到离屏 canvas
+        const drawFrame = () => {
+          if (recorder.state === 'recording') {
+            // 清空离屏 canvas
+            offscreenCtx.clearRect(0, 0, RECORDING_WIDTH, RECORDING_HEIGHT);
+
+            // 使用 canvas 的实际像素尺寸
+            const sourceWidth = canvas.width;
+            const sourceHeight = canvas.height;
+
+            if (sourceWidth > 0 && sourceHeight > 0) {
+              // 计算缩放比例，保持宽高比，使用 cover 策略（填满整个区域，可能裁剪边缘）
+              // const scale = Math.max(RECORDING_WIDTH / sourceWidth, RECORDING_HEIGHT / sourceHeight);
+              const scaledWidth = sourceWidth; // * scale;
+              const scaledHeight = sourceHeight; // * scale;
+              const x = (RECORDING_WIDTH - scaledWidth) / 2;
+              const y = (RECORDING_HEIGHT - scaledHeight) / 2;
+
+              // 将主 canvas 的内容绘制到离屏 canvas
+              offscreenCtx.drawImage(canvas, x, y, scaledWidth, scaledHeight);
+            }
+          }
+        };
+
+        // 使用 requestAnimationFrame 同步绘制
+        let animationFrameId: number;
+        const renderLoop = () => {
+          drawFrame();
+          if (recorder.state === 'recording') {
+            animationFrameId = requestAnimationFrame(renderLoop);
+          }
+        };
+        renderLoop();
+
+        // 录制整段流程：前面的视频 + 6.5s 后的数字动画，这里简单录制 9 秒
+        setTimeout(() => {
+          if (recorder.state !== 'inactive') {
+            cancelAnimationFrame(animationFrameId);
+            recorder.stop();
+          }
+        }, 9000);
+      } catch (error) {
+        console.error(error);
+        setIsRecording(false);
+        toast.error('error when recording video');
+      }
+    },
+    [isMobile]
+  );
 
   const handleDownloadVideo = async () => {
     if (isRecording || isConverting) {
@@ -647,7 +656,7 @@ export default function ClaimBoxes() {
 
             {/* 可见的 canvas：先显示视频，6.5 秒后再叠加数字动画 */}
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-              <div className="w-full h-full sm:aspect-video">
+              <div ref={containerRef} className="w-full h-full sm:aspect-video">
                 <CanvasAnimation
                   amount={Number(onOpeningBox?.amount ?? 0)}
                   tokenName={onOpeningBox?.asset ?? ''}
