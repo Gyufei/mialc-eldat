@@ -31,7 +31,7 @@ export default function Profile() {
           <div className="flex flex-col gap-2">
             <div className="flex flex-row items-center gap-4">
               <div className="text-3xl font-semibold leading-none tracking-tight text-primary title-gradient">
-                MON Claim Portal
+                Tadle Claim Portal
               </div>
               <FAQ />
             </div>
