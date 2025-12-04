@@ -19,8 +19,6 @@ type CanvasAnimationProps = {
   overlayDelayMs?: number;
 };
 
-// 移动端视频在画布上的水平偏移比例（仅用于视频画面，不影响文字居中）
-const MOBILE_VIDEO_X_OFFSET_RATIO = 0.085;
 // 移动端文字在画布中心线基础上的微调比例（负值表示整体稍微往左）
 const MOBILE_TEXT_CENTER_OFFSET_RATIO = -0.02;
 
@@ -170,8 +168,8 @@ export default function CanvasAnimation({
 
               // 先按居中计算，再额外向左偏移一小段比例（比如 8% 的画布宽度）
               const baseDx = (currentWidth - drawW) / 2;
-              const dxOffset = currentWidth * MOBILE_VIDEO_X_OFFSET_RATIO;
-              const dx = baseDx - dxOffset;
+              // const dxOffset = currentWidth * MOBILE_VIDEO_X_OFFSET_RATIO;
+              const dx = baseDx; //- dxOffset;
 
               const dy = (currentHeight - drawH) / 2;
 
@@ -240,7 +238,7 @@ export default function CanvasAnimation({
       ctx.fillText(displayText, amountCenterX, currentHeight / 2);
 
       // const labelBaselineY = textBottom + currentHeight * 0.128;
-      const labelBaselineY = isMobileNow ? currentHeight * 0.7 : currentHeight * 0.755;
+      const labelBaselineY = isMobileNow ? currentHeight * 0.7 : currentHeight * 0.74;
       ctx.font = `800 ${labelFontSize}px 'Aeonik', 'Inter', sans-serif`;
       const labelMetrics = ctx.measureText(`$${tokenName}`);
       const labelAscent = labelMetrics.fontBoundingBoxAscent ?? 54;
@@ -265,9 +263,10 @@ export default function CanvasAnimation({
       ctx.fillStyle = labelGradient;
       ctx.fillText(`$${tokenName}`, labelX, labelBaselineY);
 
-      if (progress < 1) {
-        animationFrameId = requestAnimationFrame(render);
-      }
+      // 无论数字动画是否结束，都继续请求下一帧：
+      // - 数字动画在 progress 达到 1 后会保持最终数值不变
+      // - 背景视频则可以继续随着 videoElement 播放进度更新画面
+      animationFrameId = requestAnimationFrame(render);
     };
 
     animationFrameId = requestAnimationFrame(render);

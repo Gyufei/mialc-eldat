@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import DiscordConnected from './discord-connected';
 // import EmailConnected from './email-connected';
 import EvmWalletConnected from './evm-wallet-connected';
-import FarcasterConnected from './farcaster-connected';
+// import FarcasterConnected from './farcaster-connected';
 import CusChevronDown from './icon/chevron-down';
 // import SolanaWalletConnected from './solana-wallet-connected';
 // import TelegramConnected from './telegram-connected';
@@ -52,7 +52,7 @@ export default function ConnectionPart({
               {/* <EmailConnected size={size} /> */}
               <DiscordConnected size={size} />
               {/* <TelegramConnected size={size} /> */}
-              <FarcasterConnected size={size} />
+              {/* <FarcasterConnected size={size} /> */}
             </div>
           </div>
           <div

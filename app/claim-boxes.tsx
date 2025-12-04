@@ -404,7 +404,7 @@ export default function ClaimBoxes() {
             cancelAnimationFrame(animationFrameId);
             recorder.stop();
           }
-        }, 9000);
+        }, 13000);
       } catch (error) {
         console.error(error);
         setIsRecording(false);
@@ -426,6 +426,9 @@ export default function ClaimBoxes() {
     }
 
     const mimeType = recordedMimeTypeRef.current;
+    const randomFileName = `${Math.floor(Math.random() * 1e10)
+      .toString()
+      .padStart(10, '0')}.mp4`;
 
     // 如果已经是 MP4 格式（H.264），直接下载，无需转换
     if (mimeType.startsWith('video/mp4')) {
@@ -433,7 +436,7 @@ export default function ClaimBoxes() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'tadle-reveal.mp4';
+        a.download = randomFileName;
         a.click();
         URL.revokeObjectURL(url);
       } catch (error) {
@@ -482,7 +485,7 @@ export default function ClaimBoxes() {
       const url = URL.createObjectURL(mp4Blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'tadle-reveal.mp4';
+      a.download = randomFileName;
       a.click();
       URL.revokeObjectURL(url);
     } catch (error) {
@@ -646,7 +649,6 @@ export default function ClaimBoxes() {
               src="/video/1-4.mp4"
               className="absolute inset-0 w-full h-full object-cover opacity-0 pointer-events-none"
               playsInline
-              muted
               autoPlay
               onLoadedData={() => {
                 if (videoRef.current) {
