@@ -166,11 +166,7 @@ export default function CanvasAnimation({
               const drawW = videoW * scale;
               const drawH = videoH * scale;
 
-              // 先按居中计算，再额外向左偏移一小段比例（比如 8% 的画布宽度）
-              const baseDx = (currentWidth - drawW) / 2;
-              // const dxOffset = currentWidth * MOBILE_VIDEO_X_OFFSET_RATIO;
-              const dx = baseDx; //- dxOffset;
-
+              const dx = (currentWidth - drawW) / 2;
               const dy = (currentHeight - drawH) / 2;
 
               ctx.drawImage(videoElement, dx, dy, drawW, drawH);
@@ -238,7 +234,7 @@ export default function CanvasAnimation({
       ctx.fillText(displayText, amountCenterX, currentHeight / 2);
 
       // const labelBaselineY = textBottom + currentHeight * 0.128;
-      const labelBaselineY = isMobileNow ? currentHeight * 0.7 : currentHeight * 0.74;
+      const labelBaselineY = isMobileNow ? currentHeight * 0.65 : currentHeight * 0.74;
       ctx.font = `800 ${labelFontSize}px 'Aeonik', 'Inter', sans-serif`;
       const labelMetrics = ctx.measureText(`$${tokenName}`);
       const labelAscent = labelMetrics.fontBoundingBoxAscent ?? 54;
