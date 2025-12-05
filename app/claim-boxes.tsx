@@ -6,14 +6,14 @@ import {
   BlobSource,
   BufferTarget,
   Conversion,
+  EncodedAudioPacketSource,
+  EncodedPacket,
+  EncodedVideoPacketSource,
+  MP4,
   Input as MediaInput,
   Mp4OutputFormat,
   Output,
   WEBM,
-  MP4,
-  EncodedVideoPacketSource,
-  EncodedAudioPacketSource,
-  EncodedPacket,
 } from 'mediabunny';
 import { toast } from 'sonner';
 
@@ -110,7 +110,7 @@ export default function ClaimBoxes() {
   const recordedBlobRef = useRef<Blob | null>(null);
   const recordedMimeTypeRef = useRef<string>('');
   const [videoElementForCanvas, setVideoElementForCanvas] = useState<HTMLVideoElement | null>(null);
-  
+
   // 音频预处理相关（前置优化）
   const audioBufferRef = useRef<AudioBuffer | null>(null);
   const processedAudioDataRef = useRef<{
@@ -308,14 +308,13 @@ export default function ClaimBoxes() {
 
       try {
         // 录制分辨率：
-        // - PC：固定 1920x1080（方便分享到各类平台）
-        // - 移动端：直接使用当前画布的实际像素尺寸（画布是什么样，录制就是什么样）
         const containerRect = canvasContainerRef.current?.getBoundingClientRect();
         const canvasPixelWidth = containerRect?.width ?? canvas.width;
         const canvasPixelHeight = containerRect?.height ?? canvas.height;
 
-        const RECORDING_WIDTH = isMobile ? window.devicePixelRatio * canvasPixelWidth : 1920;
-        const RECORDING_HEIGHT = isMobile ? window.devicePixelRatio * canvasPixelHeight : 1080;
+        const RECORDING_WIDTH = isMobile ? canvasPixelWidth * 2 : 1920;
+        const RECORDING_HEIGHT = isMobile ? canvasPixelHeight * 2 : 1080;
+
         const offscreenCanvas = document.createElement('canvas');
         offscreenCanvas.width = RECORDING_WIDTH;
         offscreenCanvas.height = RECORDING_HEIGHT;
@@ -382,7 +381,7 @@ export default function ClaimBoxes() {
                 const tempVideo = document.createElement('video');
                 tempVideo.src = videoUrl;
                 tempVideo.muted = true;
-                
+
                 await new Promise<void>((resolve, reject) => {
                   tempVideo.onloadedmetadata = () => {
                     videoMetadataRef.current = {
@@ -418,7 +417,7 @@ export default function ClaimBoxes() {
                   const audioFrameCount = Math.round(videoDuration * audioBuffer.sampleRate);
                   const numChannels = audioBuffer.numberOfChannels;
                   const sampleRate = audioBuffer.sampleRate;
-                  
+
                   const processedAudioBuffer = new AudioContext().createBuffer(
                     numChannels,
                     audioFrameCount,
@@ -430,7 +429,7 @@ export default function ClaimBoxes() {
                   for (let channel = 0; channel < numChannels; channel++) {
                     const sourceData = audioBuffer.getChannelData(channel);
                     const targetData = processedAudioBuffer.getChannelData(channel);
-                    
+
                     for (let i = 0; i < audioFrameCount; i++) {
                       targetData[i] = sourceData[i % sourceFrameCount];
                     }
@@ -473,17 +472,24 @@ export default function ClaimBoxes() {
             const sourceHeight = canvas.height;
 
             if (sourceWidth > 0 && sourceHeight > 0) {
-              const scale = Math.max(
-                RECORDING_WIDTH / sourceWidth,
-                RECORDING_HEIGHT / sourceHeight
-              );
-              const scaledWidth = isMobile ? sourceWidth : sourceWidth * scale;
-              const scaledHeight = isMobile ? sourceHeight : sourceHeight * scale;
-              const x = (RECORDING_WIDTH - scaledWidth) / 2;
-              const y = (RECORDING_HEIGHT - scaledHeight) / 2;
+              if (isMobile) {
+                // 移动端：直接使用 canvas 的像素尺寸绘制到离屏 canvas
+                // RECORDING_WIDTH/HEIGHT 已经等于 canvas 尺寸（经过偶数处理，可能略有差异）
+                offscreenCtx.drawImage(canvas, 0, 0, RECORDING_WIDTH, RECORDING_HEIGHT);
+              } else {
+                // PC端：需要缩放以适应 1920x1080
+                const scale = Math.max(
+                  RECORDING_WIDTH / sourceWidth,
+                  RECORDING_HEIGHT / sourceHeight
+                );
+                const scaledWidth = sourceWidth * scale;
+                const scaledHeight = sourceHeight * scale;
+                const x = (RECORDING_WIDTH - scaledWidth) / 2;
+                const y = (RECORDING_HEIGHT - scaledHeight) / 2;
 
-              // 将主 canvas 的内容绘制到离屏 canvas
-              offscreenCtx.drawImage(canvas, x, y, scaledWidth, scaledHeight);
+                // 将主 canvas 的内容绘制到离屏 canvas
+                offscreenCtx.drawImage(canvas, x, y, scaledWidth, scaledHeight);
+              }
             }
           }
         };
@@ -541,7 +547,7 @@ export default function ClaimBoxes() {
       // 如果预处理数据不可用，则重新加载
       if (!audioBuffer) {
         try {
-          const audioResponse = await fetch('/video/happy-and-bright.mp3');
+          const audioResponse = await fetch('/video/PE93NhltTYob96tF.mp3');
           const audioArrayBuffer = await audioResponse.arrayBuffer();
           const audioContext = new AudioContext();
           audioBuffer = await audioContext.decodeAudioData(audioArrayBuffer);
@@ -557,7 +563,7 @@ export default function ClaimBoxes() {
         const tempVideoForDuration = document.createElement('video');
         tempVideoForDuration.src = tempVideoUrl;
         tempVideoForDuration.muted = true;
-        
+
         await new Promise<void>((resolve, reject) => {
           tempVideoForDuration.onloadedmetadata = () => {
             videoMetadata = {
@@ -638,7 +644,7 @@ export default function ClaimBoxes() {
         for (let channel = 0; channel < numChannels; channel++) {
           const sourceData = audioBuffer.getChannelData(channel);
           const targetData = processedAudioBuffer.getChannelData(channel);
-          
+
           for (let i = 0; i < audioFrameCount; i++) {
             targetData[i] = sourceData[i % sourceFrameCount];
           }
@@ -665,10 +671,25 @@ export default function ClaimBoxes() {
       });
 
       // 使用预处理的视频元数据
-      const videoWidth = videoMetadata!.width;
-      const videoHeight = videoMetadata!.height;
+      let videoWidth = videoMetadata!.width;
+      let videoHeight = videoMetadata!.height;
       const frameRate = 30; // 假设 30fps
       const videoUrl = URL.createObjectURL(blob);
+
+      // H.264 编码器要求宽度和高度必须是偶数
+      // 确保编码器配置的尺寸是偶数
+      videoWidth = Math.floor(videoWidth / 2) * 2;
+      videoHeight = Math.floor(videoHeight / 2) * 2;
+
+      if (videoWidth <= 0 || videoHeight <= 0) {
+        console.error('Invalid video dimensions after rounding:', videoWidth, videoHeight);
+        toast.error('Invalid video dimensions, cannot convert');
+        setIsConverting(false);
+        URL.revokeObjectURL(videoUrl);
+        return;
+      }
+
+      console.log('Video encoder dimensions:', videoWidth, videoHeight);
 
       // 创建视频和音频编码器源
       const videoSource = new EncodedVideoPacketSource('avc');
@@ -701,10 +722,11 @@ export default function ClaimBoxes() {
       // 使用更高的 AVC level 以支持 1920x1080 分辨率
       // avc1.640028 对应 AVC Level 4.0，支持最大 2048x1024
       // 或者使用 avc1.64001f 对应 AVC Level 3.1，但需要降低分辨率
-      const codecString = videoWidth * videoHeight > 921600 
-        ? 'avc1.640028' // Level 4.0，支持更高分辨率
-        : 'avc1.42001f'; // Level 3.1，适合较低分辨率
-      
+      const codecString =
+        videoWidth * videoHeight > 921600
+          ? 'avc1.640028' // Level 4.0，支持更高分辨率
+          : 'avc1.42001f'; // Level 3.1，适合较低分辨率
+
       videoEncoder.configure({
         codec: codecString,
         width: videoWidth,
@@ -734,7 +756,7 @@ export default function ClaimBoxes() {
       const videoElement = document.createElement('video');
       videoElement.src = videoUrl;
       videoElement.muted = true;
-      
+
       await new Promise((resolve, reject) => {
         videoElement.onloadedmetadata = resolve;
         videoElement.onerror = reject;
@@ -757,10 +779,10 @@ export default function ClaimBoxes() {
       const processVideoFrames = async () => {
         let frameCounter = 0;
         let hasError = false;
-        
+
         try {
           videoElement.play();
-          
+
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
@@ -772,8 +794,8 @@ export default function ClaimBoxes() {
                 const timestamp = (frameCounter * 1000000) / frameRate;
                 // 如果需要修改时间戳，创建新的 VideoFrame
                 const frame = new VideoFrame(videoFrame, { timestamp });
-                videoEncoder.encode(frame, { 
-                  keyFrame: frameCounter % (frameRate * 2) === 0 // 每 2 秒一个关键帧
+                videoEncoder.encode(frame, {
+                  keyFrame: frameCounter % (frameRate * 2) === 0, // 每 2 秒一个关键帧
                 });
                 frame.close();
                 videoFrame.close(); // 关闭原始 frame
@@ -785,7 +807,7 @@ export default function ClaimBoxes() {
               }
             }
           }
-          
+
           // 只有在编码器仍然打开时才调用 flush
           if (videoEncoder && videoEncoder.state !== 'closed' && !hasError) {
             await videoEncoder.flush();
@@ -1021,7 +1043,7 @@ export default function ClaimBoxes() {
             {/* 隐藏的视频元素，仅用于提供帧数据给 canvas */}
             <video
               ref={videoRef}
-              src="/video/1-4.mp4"
+              src={isMobile ? '/video/1-4-mb.mp4' : '/video/1-4.mp4'}
               className="absolute inset-0 w-full h-full object-cover opacity-0 pointer-events-none"
               playsInline
               autoPlay

@@ -20,7 +20,7 @@ type CanvasAnimationProps = {
 };
 
 // 移动端文字在画布中心线基础上的微调比例（负值表示整体稍微往左）
-const MOBILE_TEXT_CENTER_OFFSET_RATIO = -0.02;
+const MOBILE_TEXT_CENTER_OFFSET_RATIO = 0;
 
 const getDecimalPlaces = (value: number) => {
   if (!Number.isFinite(value)) {
@@ -154,30 +154,8 @@ export default function CanvasAnimation({
       // 每一帧都尝试绘制视频画面作为背景
       if (isVideoReady) {
         try {
-          const isMobileNow = window.innerWidth < 768;
-
-          // 移动端：保持视频原始比例，使用「cover」策略，超出画布部分裁切掉
-          if (isMobileNow) {
-            const videoW = videoElement.videoWidth || currentWidth;
-            const videoH = videoElement.videoHeight || currentHeight;
-
-            if (videoW > 0 && videoH > 0) {
-              const scale = Math.max(currentWidth / videoW, currentHeight / videoH);
-              const drawW = videoW * scale;
-              const drawH = videoH * scale;
-
-              const dx = (currentWidth - drawW) / 2;
-              const dy = (currentHeight - drawH) / 2;
-
-              ctx.drawImage(videoElement, dx, dy, drawW, drawH);
-            } else {
-              // 回退：如果拿不到视频尺寸，就退化为拉伸铺满
-              ctx.drawImage(videoElement, 0, 0, currentWidth, currentHeight);
-            }
-          } else {
-            // 桌面端：保持现有逻辑，直接铺满整个画布
-            ctx.drawImage(videoElement, 0, 0, currentWidth, currentHeight);
-          }
+          // 直接铺满整个画布（新视频已针对移动端优化，无需 cover 处理）
+          ctx.drawImage(videoElement, 0, 0, currentWidth, currentHeight);
         } catch {
           // 某些情况下 drawImage 可能抛错（跨域、未准备好等），忽略即可
         }
@@ -229,12 +207,13 @@ export default function CanvasAnimation({
       const amountCenterX = isMobileNow
         ? currentWidth / 2 + currentWidth * MOBILE_TEXT_CENTER_OFFSET_RATIO
         : currentWidth / 2;
-      ctx.strokeText(displayText, amountCenterX, currentHeight / 2);
+      const amountCenterY = isMobileNow ? currentHeight * 0.44 : currentHeight / 2;
+      ctx.strokeText(displayText, amountCenterX, amountCenterY);
       ctx.fillStyle = gradient;
-      ctx.fillText(displayText, amountCenterX, currentHeight / 2);
+      ctx.fillText(displayText, amountCenterX, amountCenterY);
 
       // const labelBaselineY = textBottom + currentHeight * 0.128;
-      const labelBaselineY = isMobileNow ? currentHeight * 0.65 : currentHeight * 0.74;
+      const labelBaselineY = isMobileNow ? currentHeight * 0.584 : currentHeight * 0.74;
       ctx.font = `800 ${labelFontSize}px 'Aeonik', 'Inter', sans-serif`;
       const labelMetrics = ctx.measureText(`$${tokenName}`);
       const labelAscent = labelMetrics.fontBoundingBoxAscent ?? 54;
