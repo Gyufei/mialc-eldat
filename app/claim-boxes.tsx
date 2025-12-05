@@ -402,7 +402,7 @@ export default function ClaimBoxes() {
                 // 2. 加载音频文件（如果还没加载）
                 if (!audioBufferRef.current) {
                   try {
-                    const audioResponse = await fetch('/video/happy-and-bright.mp3');
+                    const audioResponse = await fetch('/video/PE93NhltTYob96tF.mp3');
                     const audioArrayBuffer = await audioResponse.arrayBuffer();
                     const audioContext = new AudioContext();
                     audioBufferRef.current = await audioContext.decodeAudioData(audioArrayBuffer);
