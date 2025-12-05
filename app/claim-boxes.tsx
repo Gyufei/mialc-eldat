@@ -110,6 +110,20 @@ export default function ClaimBoxes() {
   const recordedBlobRef = useRef<Blob | null>(null);
   const recordedMimeTypeRef = useRef<string>('');
   const [videoElementForCanvas, setVideoElementForCanvas] = useState<HTMLVideoElement | null>(null);
+  
+  // 音频预处理相关（前置优化）
+  const audioBufferRef = useRef<AudioBuffer | null>(null);
+  const processedAudioDataRef = useRef<{
+    planarData: Float32Array;
+    sampleRate: number;
+    numberOfChannels: number;
+    numberOfFrames: number;
+  } | null>(null);
+  const videoMetadataRef = useRef<{
+    width: number;
+    height: number;
+    duration: number;
+  } | null>(null);
 
   const { data: airDropData } = useAirdrop() as { data: AirDropData };
 
@@ -352,12 +366,94 @@ export default function ClaimBoxes() {
           }
         };
 
-        recorder.onstop = () => {
+        recorder.onstop = async () => {
           try {
             const blob = new Blob(recordedChunksRef.current, { type: recorder.mimeType });
             recordedBlobRef.current = blob;
             recordedMimeTypeRef.current = recorder.mimeType;
             setIsRecording(false);
+
+            // 前置优化：录制完成后立即开始预处理音频和视频元数据
+            // 这样在用户点击下载时，大部分准备工作已经完成
+            (async () => {
+              try {
+                // 1. 获取视频元数据
+                const videoUrl = URL.createObjectURL(blob);
+                const tempVideo = document.createElement('video');
+                tempVideo.src = videoUrl;
+                tempVideo.muted = true;
+                
+                await new Promise<void>((resolve, reject) => {
+                  tempVideo.onloadedmetadata = () => {
+                    videoMetadataRef.current = {
+                      width: tempVideo.videoWidth,
+                      height: tempVideo.videoHeight,
+                      duration: tempVideo.duration,
+                    };
+                    URL.revokeObjectURL(videoUrl);
+                    resolve();
+                  };
+                  tempVideo.onerror = () => {
+                    URL.revokeObjectURL(videoUrl);
+                    reject(new Error('Failed to load video metadata'));
+                  };
+                });
+
+                // 2. 加载音频文件（如果还没加载）
+                if (!audioBufferRef.current) {
+                  try {
+                    const audioResponse = await fetch('/video/happy-and-bright.mp3');
+                    const audioArrayBuffer = await audioResponse.arrayBuffer();
+                    const audioContext = new AudioContext();
+                    audioBufferRef.current = await audioContext.decodeAudioData(audioArrayBuffer);
+                  } catch (error) {
+                    console.warn('Failed to preload audio file:', error);
+                  }
+                }
+
+                // 3. 处理音频数据（如果音频和视频元数据都已准备好）
+                if (audioBufferRef.current && videoMetadataRef.current) {
+                  const { duration: videoDuration } = videoMetadataRef.current;
+                  const audioBuffer = audioBufferRef.current;
+                  const audioFrameCount = Math.round(videoDuration * audioBuffer.sampleRate);
+                  const numChannels = audioBuffer.numberOfChannels;
+                  const sampleRate = audioBuffer.sampleRate;
+                  
+                  const processedAudioBuffer = new AudioContext().createBuffer(
+                    numChannels,
+                    audioFrameCount,
+                    sampleRate
+                  );
+
+                  // 复制音频数据（如果音频比视频短，则循环填充；如果长，则截取）
+                  const sourceFrameCount = audioBuffer.length;
+                  for (let channel = 0; channel < numChannels; channel++) {
+                    const sourceData = audioBuffer.getChannelData(channel);
+                    const targetData = processedAudioBuffer.getChannelData(channel);
+                    
+                    for (let i = 0; i < audioFrameCount; i++) {
+                      targetData[i] = sourceData[i % sourceFrameCount];
+                    }
+                  }
+
+                  // 创建扁平音频数据（f32-planar 格式）
+                  const planarData = new Float32Array(numChannels * audioFrameCount);
+                  for (let channel = 0; channel < numChannels; channel++) {
+                    const channelData = processedAudioBuffer.getChannelData(channel);
+                    planarData.set(channelData, channel * audioFrameCount);
+                  }
+
+                  processedAudioDataRef.current = {
+                    planarData,
+                    sampleRate,
+                    numberOfChannels: numChannels,
+                    numberOfFrames: audioFrameCount,
+                  };
+                }
+              } catch (error) {
+                console.warn('Failed to preprocess audio/video metadata:', error);
+              }
+            })();
           } catch (error) {
             console.error(error);
             setIsRecording(false);
@@ -437,33 +533,50 @@ export default function ClaimBoxes() {
     try {
       setIsConverting(true);
 
-      // 加载并解码音频文件
-      let audioBuffer: AudioBuffer | null = null;
-      try {
-        const audioResponse = await fetch('/video/happy-and-bright.mp3');
-        const audioArrayBuffer = await audioResponse.arrayBuffer();
-        const audioContext = new AudioContext();
-        audioBuffer = await audioContext.decodeAudioData(audioArrayBuffer);
-      } catch (error) {
-        console.warn('Failed to load audio file, proceeding without audio:', error);
+      // 使用预处理的音频数据（如果可用），否则重新加载
+      let audioBuffer: AudioBuffer | null = audioBufferRef.current;
+      let videoMetadata = videoMetadataRef.current;
+      const processedAudioData = processedAudioDataRef.current;
+
+      // 如果预处理数据不可用，则重新加载
+      if (!audioBuffer) {
+        try {
+          const audioResponse = await fetch('/video/happy-and-bright.mp3');
+          const audioArrayBuffer = await audioResponse.arrayBuffer();
+          const audioContext = new AudioContext();
+          audioBuffer = await audioContext.decodeAudioData(audioArrayBuffer);
+          audioBufferRef.current = audioBuffer;
+        } catch (error) {
+          console.warn('Failed to load audio file, proceeding without audio:', error);
+        }
       }
 
-      // 获取视频时长（通过创建 video 元素）
-      const tempVideoUrl = URL.createObjectURL(blob);
-      const tempVideoForDuration = document.createElement('video');
-      tempVideoForDuration.src = tempVideoUrl;
-      tempVideoForDuration.muted = true;
-      
-      const videoDuration = await new Promise<number>((resolve, reject) => {
-        tempVideoForDuration.onloadedmetadata = () => {
-          resolve(tempVideoForDuration.duration);
-          URL.revokeObjectURL(tempVideoUrl);
-        };
-        tempVideoForDuration.onerror = () => {
-          reject(new Error('Failed to load video metadata'));
-          URL.revokeObjectURL(tempVideoUrl);
-        };
-      });
+      // 如果视频元数据不可用，则重新获取
+      if (!videoMetadata) {
+        const tempVideoUrl = URL.createObjectURL(blob);
+        const tempVideoForDuration = document.createElement('video');
+        tempVideoForDuration.src = tempVideoUrl;
+        tempVideoForDuration.muted = true;
+        
+        await new Promise<void>((resolve, reject) => {
+          tempVideoForDuration.onloadedmetadata = () => {
+            videoMetadata = {
+              width: tempVideoForDuration.videoWidth,
+              height: tempVideoForDuration.videoHeight,
+              duration: tempVideoForDuration.duration,
+            };
+            videoMetadataRef.current = videoMetadata;
+            URL.revokeObjectURL(tempVideoUrl);
+            resolve();
+          };
+          tempVideoForDuration.onerror = () => {
+            reject(new Error('Failed to load video metadata'));
+            URL.revokeObjectURL(tempVideoUrl);
+          };
+        });
+      }
+
+      const videoDuration = videoMetadata!.duration;
 
       // 创建输入（支持 MP4 和 WebM）
       const inputFormats = mimeType.startsWith('video/mp4') ? [MP4] : [WEBM];
@@ -507,27 +620,42 @@ export default function ClaimBoxes() {
       // 使用 WebCodecs API 和 mediabunny 合并视频和音频
       // 根据 demo 和迁移指南实现
 
-      // 准备音频数据
-      const targetDuration = videoDuration;
-      const audioFrameCount = Math.round(targetDuration * audioBuffer.sampleRate);
-      const numChannels = audioBuffer.numberOfChannels;
-      const sampleRate = audioBuffer.sampleRate;
-      const processedAudioBuffer = new AudioContext().createBuffer(
-        numChannels,
-        audioFrameCount,
-        sampleRate
-      );
+      // 使用预处理的音频数据（如果可用），否则重新处理
+      let processedAudioDataToUse = processedAudioData;
+      if (!processedAudioDataToUse && audioBuffer) {
+        // 如果预处理数据不可用，则重新处理（这种情况应该很少发生）
+        const targetDuration = videoDuration;
+        const audioFrameCount = Math.round(targetDuration * audioBuffer.sampleRate);
+        const numChannels = audioBuffer.numberOfChannels;
+        const sampleRate = audioBuffer.sampleRate;
+        const processedAudioBuffer = new AudioContext().createBuffer(
+          numChannels,
+          audioFrameCount,
+          sampleRate
+        );
 
-      // 复制音频数据（如果音频比视频短，则循环填充；如果长，则截取）
-      const sourceFrameCount = audioBuffer.length;
-      for (let channel = 0; channel < numChannels; channel++) {
-        const sourceData = audioBuffer.getChannelData(channel);
-        const targetData = processedAudioBuffer.getChannelData(channel);
-        
-        for (let i = 0; i < audioFrameCount; i++) {
-          // 循环使用源音频数据
-          targetData[i] = sourceData[i % sourceFrameCount];
+        const sourceFrameCount = audioBuffer.length;
+        for (let channel = 0; channel < numChannels; channel++) {
+          const sourceData = audioBuffer.getChannelData(channel);
+          const targetData = processedAudioBuffer.getChannelData(channel);
+          
+          for (let i = 0; i < audioFrameCount; i++) {
+            targetData[i] = sourceData[i % sourceFrameCount];
+          }
         }
+
+        const planarData = new Float32Array(numChannels * audioFrameCount);
+        for (let channel = 0; channel < numChannels; channel++) {
+          const channelData = processedAudioBuffer.getChannelData(channel);
+          planarData.set(channelData, channel * audioFrameCount);
+        }
+
+        processedAudioDataToUse = {
+          planarData,
+          sampleRate,
+          numberOfChannels: numChannels,
+          numberOfFrames: audioFrameCount,
+        };
       }
 
       // 创建 mediabunny Output（类似 mp4-muxer 的 Muxer）
@@ -536,18 +664,11 @@ export default function ClaimBoxes() {
         target: new BufferTarget(),
       });
 
-      // 从录制的视频中获取视频信息
-      const videoUrl = URL.createObjectURL(blob);
-      const tempVideo = document.createElement('video');
-      tempVideo.src = videoUrl;
-      await new Promise((resolve, reject) => {
-        tempVideo.onloadedmetadata = resolve;
-        tempVideo.onerror = reject;
-      });
-
-      const videoWidth = tempVideo.videoWidth;
-      const videoHeight = tempVideo.videoHeight;
+      // 使用预处理的视频元数据
+      const videoWidth = videoMetadata!.width;
+      const videoHeight = videoMetadata!.height;
       const frameRate = 30; // 假设 30fps
+      const videoUrl = URL.createObjectURL(blob);
 
       // 创建视频和音频编码器源
       const videoSource = new EncodedVideoPacketSource('avc');
@@ -604,8 +725,8 @@ export default function ClaimBoxes() {
 
       audioEncoder.configure({
         codec: 'mp4a.40.2',
-        numberOfChannels: numChannels,
-        sampleRate: sampleRate,
+        numberOfChannels: processedAudioDataToUse!.numberOfChannels,
+        sampleRate: processedAudioDataToUse!.sampleRate,
         bitrate: 128000,
       });
 
@@ -680,23 +801,21 @@ export default function ClaimBoxes() {
         }
       };
 
-      // 处理音频数据
+      // 处理音频数据（使用预处理的数据）
       const processAudio = async () => {
-        // 创建扁平音频数据（f32-planar 格式）
-        const planarData = new Float32Array(numChannels * audioFrameCount);
-        for (let channel = 0; channel < numChannels; channel++) {
-          const channelData = processedAudioBuffer.getChannelData(channel);
-          planarData.set(channelData, channel * audioFrameCount);
+        if (!processedAudioDataToUse) {
+          return;
         }
 
-        // 创建 AudioData 对象
+        // 使用预处理的音频数据
         const audioData = new AudioData({
           format: 'f32-planar',
-          sampleRate: sampleRate,
-          numberOfFrames: audioFrameCount,
-          numberOfChannels: numChannels,
+          sampleRate: processedAudioDataToUse.sampleRate,
+          numberOfFrames: processedAudioDataToUse.numberOfFrames,
+          numberOfChannels: processedAudioDataToUse.numberOfChannels,
           timestamp: 0,
-          data: planarData,
+          // @ts-expect-error - AudioData accepts ArrayBufferView but TypeScript types may be strict
+          data: processedAudioDataToUse.planarData,
         });
 
         audioEncoder!.encode(audioData);
