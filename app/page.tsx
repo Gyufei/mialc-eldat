@@ -157,7 +157,7 @@ export default function Home() {
           <div className="h-[calc(100vh-100px)] flex items-center justify-center">
             <LoaderCircle className="w-10 h-10 animate-spin" />
           </div>
-        ) : isAirdropActive ? (
+        ) : !isAirdropActive ? (
           <ClaimBoxes />
         ) : (
           <Profile />

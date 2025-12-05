@@ -59,13 +59,7 @@ export default function Profile() {
                   />
                 </div>
               </div>
-              <p className="text-center md:text-left text-xs lg:text-sm text-secondary">
-                Early reveal has begun for users who choose to participate. Read{' '}
-                <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 font-britti-sans rounded-full transition-all duration-200 active:scale-[0.98] disabled:active:scale-100 underline-offset-4 hover:text-neutral-500 px-0! text-primary hover:underline cursor-pointer p-0 m-0 h-fit">
-                  FAQ
-                </button>{' '}
-                for more.
-              </p>
+              <p className="text-center md:text-left h-5 text-xs lg:text-sm text-secondary"></p>
             </div>
             <ConnectionPart />
           </div>
