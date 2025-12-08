@@ -114,15 +114,13 @@ export default function EvmWalletConnected({ size = 'lg' }: { size?: 'lg' | 'sm'
                 >
                   {isNoWallet ? (
                     <span>Not Connected</span>
-                  ) : isMultiWalletEnabled ? (
+                  ) : (
                     <>
-                      <span>{evmWallets?.length}/8 connected</span>
+                      <span>{evmWallets?.length}/{isMultiWalletEnabled ? 8 : 1} connected</span>
                       <ChevronDown
                         className={cn('w-4 h-4 transition-transform', isOpen ? 'rotate-180' : '')}
                       />
                     </>
-                  ) : (
-                    <span>/8 connected</span>
                   )}
                 </div>
               </div>
