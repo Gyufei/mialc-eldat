@@ -271,7 +271,6 @@ export default function CanvasAnimation({
       // 使用防抖，避免在短时间内多次触发
       // 同时让 updateCanvasSize 内部的尺寸检查来处理是否真的需要更新
       resizeTimer = setTimeout(() => {
-        console.log('resizeObserver');
         updateCanvasSize();
         requestAnimationFrame(render);
         resizeTimer = null;
@@ -281,7 +280,6 @@ export default function CanvasAnimation({
     resizeObserver.observe(container);
 
     const handleWindowResize = () => {
-      console.log('handleWindowResize');
       updateCanvasSize();
       requestAnimationFrame(render);
     };
