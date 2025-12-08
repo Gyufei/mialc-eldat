@@ -183,7 +183,7 @@ export default function CanvasAnimation({
       const isMobileNow = window.innerWidth < 768;
       const baseSize = Math.min(currentWidth, currentHeight);
       const amountFontSize = isMobileNow ? 48 : baseSize * 0.22;
-      const labelFontSize = baseSize * 0.125 * 0.75;
+      const labelFontSize = baseSize * 0.125 * (tokenName === 'MON' ? 0.68 : 0.7);
 
       ctx.font = `800 ${amountFontSize}px 'Britti Sans', 'Inter', sans-serif`;
       const textMetrics = ctx.measureText(displayText);
@@ -231,7 +231,9 @@ export default function CanvasAnimation({
       // 移动端：tokenName 与 amount 使用同样的中心偏移；桌面端保留原逻辑靠右
       const labelX = isMobileNow
         ? currentWidth / 2 + currentWidth * MOBILE_TEXT_CENTER_OFFSET_RATIO
-        : currentWidth * 0.92;
+        : tokenName === 'MON'
+          ? currentWidth * 0.93
+          : currentWidth * 0.91;
       ctx.textAlign = isMobileNow ? 'center' : 'right';
       ctx.textBaseline = 'bottom';
       ctx.strokeText(`$${tokenName}`, labelX, labelBaselineY);
