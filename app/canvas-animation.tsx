@@ -276,7 +276,7 @@ export default function CanvasAnimation({
       <canvas
         ref={canvasRef}
         role="img"
-        aria-label={`${tokenName} 数字动画`}
+        aria-label={`${tokenName} number animation`}
         style={{
           borderRadius: 16,
           display: 'block',
