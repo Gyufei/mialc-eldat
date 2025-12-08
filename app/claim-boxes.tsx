@@ -507,7 +507,7 @@ export default function ClaimBoxes() {
                   const processedAudioBuffer = new AudioContext().createBuffer(
                     numChannels,
                     audioFrameCount,
-                    sampleRate
+                    sampleRate,
                   );
 
                   // 复制音频数据（如果音频比视频短，则循环填充；如果长，则截取）
@@ -566,7 +566,7 @@ export default function ClaimBoxes() {
                 // PC端：需要缩放以适应 1920x1080
                 const scale = Math.max(
                   RECORDING_WIDTH / sourceWidth,
-                  RECORDING_HEIGHT / sourceHeight
+                  RECORDING_HEIGHT / sourceHeight,
                 );
                 const scaledWidth = sourceWidth * scale;
                 const scaledHeight = sourceHeight * scale;
@@ -603,7 +603,7 @@ export default function ClaimBoxes() {
         toast.error('error when recording video');
       }
     },
-    [isMobile]
+    [isMobile],
   );
 
   const handleDownloadVideo = async () => {
@@ -614,7 +614,9 @@ export default function ClaimBoxes() {
 
     // 移动端提示用户使用 PC 下载
     if (isMobile) {
-      toast.warning('Due to mobile performance limitations, please use a PC browser to download the video.');
+      toast.warning(
+        'Due to mobile performance limitations, please use a PC browser to download the video.',
+      );
       return;
     }
 
@@ -631,27 +633,27 @@ export default function ClaimBoxes() {
 
     try {
       setIsConverting(true);
-      
+
       // 清理之前的定时器
       if (progressTimerRef.current) {
         clearInterval(progressTimerRef.current);
         progressTimerRef.current = null;
       }
-      
+
       // 重置进度为0
       setDownloadProgress(0);
-      await new Promise(resolve => setTimeout(resolve, 16)); // 等待UI更新
-      
+      await new Promise((resolve) => setTimeout(resolve, 16)); // 等待UI更新
+
       // 启动自动递增进度条
       // 总时间约20秒，最大到95%，增量递减
       const TARGET_TIME = 20000; // 20秒
       const MAX_PROGRESS = 95; // 最大进度95%
       const UPDATE_INTERVAL = 100; // 每100ms更新一次
       const TOTAL_UPDATES = TARGET_TIME / UPDATE_INTERVAL; // 总共200次更新
-      
+
       let currentProgress = 0;
       let updateCount = 0;
-      
+
       // 计算每次的增量，使用递减算法
       // 开始时增量大，逐渐变小
       const getIncrement = (progress: number, remainingUpdates: number) => {
@@ -663,11 +665,11 @@ export default function ClaimBoxes() {
         const speedFactor = 1 - progressRatio * 0.7; // 从1.0递减到0.3
         return baseIncrement * speedFactor;
       };
-      
+
       progressTimerRef.current = setInterval(() => {
         updateCount++;
         const remainingUpdates = TOTAL_UPDATES - updateCount;
-        
+
         if (remainingUpdates <= 0 || currentProgress >= MAX_PROGRESS) {
           // 达到最大进度或时间到了
           if (progressTimerRef.current) {
@@ -677,7 +679,7 @@ export default function ClaimBoxes() {
           setDownloadProgress(MAX_PROGRESS);
           return;
         }
-        
+
         const increment = getIncrement(currentProgress, remainingUpdates);
         currentProgress = Math.min(currentProgress + increment, MAX_PROGRESS);
         setDownloadProgress(Math.floor(currentProgress));
@@ -691,12 +693,12 @@ export default function ClaimBoxes() {
         }
         setDownloadProgress(100);
       };
-      
+
       // 使用预处理的音频数据（如果可用），否则重新加载
       let audioBuffer: AudioBuffer | null = audioBufferRef.current;
       let videoMetadata = videoMetadataRef.current;
       const processedAudioData = processedAudioDataRef.current;
-      
+
       // 如果预处理数据不可用，则重新加载
       if (!audioBuffer) {
         try {
@@ -709,7 +711,7 @@ export default function ClaimBoxes() {
           console.warn('Failed to load audio file, proceeding without audio:', error);
         }
       }
-      
+
       // 如果视频元数据不可用，则重新获取
       if (!videoMetadata) {
         const tempVideoUrl = URL.createObjectURL(blob);
@@ -763,7 +765,7 @@ export default function ClaimBoxes() {
         if (!conversion.isValid) {
           toast.error('video conversion failed');
           completeProgress();
-          await new Promise(resolve => setTimeout(resolve, 300));
+          await new Promise((resolve) => setTimeout(resolve, 300));
           setIsConverting(false);
           setTimeout(() => setDownloadProgress(0), 200);
           return;
@@ -773,7 +775,7 @@ export default function ClaimBoxes() {
         if (!buffer) {
           toast.error('video conversion failed');
           completeProgress();
-          await new Promise(resolve => setTimeout(resolve, 300));
+          await new Promise((resolve) => setTimeout(resolve, 300));
           setIsConverting(false);
           setTimeout(() => setDownloadProgress(0), 200);
           return;
@@ -786,7 +788,7 @@ export default function ClaimBoxes() {
         a.click();
         URL.revokeObjectURL(url);
         completeProgress();
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise((resolve) => setTimeout(resolve, 300));
         setIsConverting(false);
         setTimeout(() => setDownloadProgress(0), 200);
         return;
@@ -806,7 +808,11 @@ export default function ClaimBoxes() {
 
       try {
         // 运行时再次检查关键 API 是否可用
-        if (typeof VideoEncoder === 'undefined' || typeof AudioEncoder === 'undefined' || typeof AudioData === 'undefined') {
+        if (
+          typeof VideoEncoder === 'undefined' ||
+          typeof AudioEncoder === 'undefined' ||
+          typeof AudioData === 'undefined'
+        ) {
           throw new Error('WebCodecs API not available');
         }
 
@@ -825,7 +831,7 @@ export default function ClaimBoxes() {
           const processedAudioBuffer = new AudioContext().createBuffer(
             numChannels,
             audioFrameCount,
-            sampleRate
+            sampleRate,
           );
 
           const sourceFrameCount = audioBuffer.length;
@@ -1000,7 +1006,9 @@ export default function ClaimBoxes() {
           throw new Error('MediaStreamTrackProcessor is not available');
         }
 
-        trackProcessor = new MediaStreamTrackProcessor({ track: videoTrack }) as unknown as MediaStreamTrackProcessor<VideoFrame>;
+        trackProcessor = new MediaStreamTrackProcessor({
+          track: videoTrack,
+        }) as unknown as MediaStreamTrackProcessor<VideoFrame>;
         reader = trackProcessor.readable.getReader();
 
         // 处理视频帧
@@ -1137,13 +1145,13 @@ export default function ClaimBoxes() {
           URL.revokeObjectURL(videoUrl);
         }
         completeProgress();
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise((resolve) => setTimeout(resolve, 300));
         setIsConverting(false);
         setTimeout(() => setDownloadProgress(0), 200);
         return; // 成功完成，直接返回
       } catch (error) {
         console.warn('Audio merge failed, falling back to video-only download:', error);
-        
+
         // 清理资源
         try {
           if (videoEncoder && videoEncoder.state !== 'closed') {
@@ -1194,11 +1202,14 @@ export default function ClaimBoxes() {
             target: fallbackBufferTarget,
           });
 
-          const fallbackConversion = await Conversion.init({ input: fallbackInput, output: fallbackOutput });
+          const fallbackConversion = await Conversion.init({
+            input: fallbackInput,
+            output: fallbackOutput,
+          });
           if (!fallbackConversion.isValid) {
             toast.error('video conversion failed');
             completeProgress();
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise((resolve) => setTimeout(resolve, 300));
             setIsConverting(false);
             setTimeout(() => setDownloadProgress(0), 200);
             return;
@@ -1208,7 +1219,7 @@ export default function ClaimBoxes() {
           if (!fallbackBuffer) {
             toast.error('video conversion failed');
             completeProgress();
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise((resolve) => setTimeout(resolve, 300));
             setIsConverting(false);
             setTimeout(() => setDownloadProgress(0), 200);
             return;
@@ -1221,14 +1232,14 @@ export default function ClaimBoxes() {
           fallbackA.click();
           URL.revokeObjectURL(fallbackUrl);
           completeProgress();
-          await new Promise(resolve => setTimeout(resolve, 300));
+          await new Promise((resolve) => setTimeout(resolve, 300));
           setIsConverting(false);
           setTimeout(() => setDownloadProgress(0), 200);
         } catch (fallbackError) {
           console.error('Fallback video conversion also failed:', fallbackError);
           toast.error('video conversion failed');
           completeProgress();
-          await new Promise(resolve => setTimeout(resolve, 300));
+          await new Promise((resolve) => setTimeout(resolve, 300));
           setIsConverting(false);
           setTimeout(() => setDownloadProgress(0), 200);
           return;
@@ -1245,7 +1256,7 @@ export default function ClaimBoxes() {
         progressTimerRef.current = null;
       }
       setDownloadProgress(100);
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 300));
       setIsConverting(false);
       setTimeout(() => setDownloadProgress(0), 200);
     }
@@ -1453,11 +1464,12 @@ export default function ClaimBoxes() {
                   <Button
                     onClick={handleDownloadVideo}
                     disabled={isMobile ? false : !recordedBlobRef.current}
-                    className="bg-black px-2 hover:bg-black/80 text-white flex-1 w-50 flex flex-row gap-2 items-center relative overflow-hidden"
+                    className="bg-black px-2 hover:bg-black/80 text-white flex-1 sm:w-50 w-[260px] flex flex-row gap-2 items-center relative overflow-hidden"
                     style={{
-                      background: !isMobile && downloadProgress > 0
-                        ? `linear-gradient(to right, #5F57F2 ${downloadProgress}%, black ${downloadProgress}%)`
-                        : undefined,
+                      background:
+                        !isMobile && downloadProgress > 0
+                          ? `linear-gradient(to right, #5F57F2 ${downloadProgress}%, black ${downloadProgress}%)`
+                          : undefined,
                     }}
                   >
                     {isMobile || (!isRecording && !isConverting) ? (
@@ -1465,7 +1477,9 @@ export default function ClaimBoxes() {
                     ) : (
                       <Loader className="size-4 animate-spin" color="#fff" />
                     )}
-                    <span className="relative z-10">{isMobile ? 'Use PC to Download' : 'Download Video'}</span>
+                    <span className="relative z-10">
+                      {isMobile ? 'Use PC to Download' : 'Download Video'}
+                    </span>
                   </Button>
                 </div>
                 <button
