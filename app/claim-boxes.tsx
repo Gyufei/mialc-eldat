@@ -887,7 +887,7 @@ export default function ClaimBoxes() {
             clearTimeout(timeout);
             resolve();
           };
-          videoElement!.onerror = (e) => {
+          videoElement!.onerror = (_e) => {
             clearTimeout(timeout);
             reject(new Error('Failed to load video metadata'));
           };
@@ -965,14 +965,14 @@ export default function ClaimBoxes() {
             if (reader) {
               try {
                 reader.releaseLock();
-              } catch (e) {
+              } catch (_e) {
                 // 忽略释放锁的错误
               }
             }
             if (trackProcessor) {
               try {
                 trackProcessor.readable.cancel();
-              } catch (e) {
+              } catch (_e) {
                 // 忽略取消的错误
               }
             }
@@ -1060,14 +1060,14 @@ export default function ClaimBoxes() {
           if (videoEncoder && videoEncoder.state !== 'closed') {
             videoEncoder.close();
           }
-        } catch (e) {
+        } catch (_e) {
           // 忽略清理错误
         }
         try {
           if (audioEncoder && audioEncoder.state !== 'closed') {
             audioEncoder.close();
           }
-        } catch (e) {
+        } catch (_e) {
           // 忽略清理错误
         }
         if (videoUrl) {
@@ -1080,14 +1080,14 @@ export default function ClaimBoxes() {
         if (reader) {
           try {
             reader.releaseLock();
-          } catch (e) {
+          } catch (_e) {
             // 忽略释放锁的错误
           }
         }
         if (trackProcessor) {
           try {
             trackProcessor.readable.cancel();
-          } catch (e) {
+          } catch (_e) {
             // 忽略取消的错误
           }
         }
