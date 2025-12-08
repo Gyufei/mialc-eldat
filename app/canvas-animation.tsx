@@ -183,7 +183,7 @@ export default function CanvasAnimation({
       const isMobileNow = window.innerWidth < 768;
       const baseSize = Math.min(currentWidth, currentHeight);
       const amountFontSize = isMobileNow ? 48 : baseSize * 0.22;
-      const labelFontSize = baseSize * 0.125 * (tokenName === 'MON' ? 0.68 : 0.7);
+      const labelFontSize = baseSize * 0.125 * (tokenName === 'MON' ? 0.66 : 0.7);
 
       ctx.font = `800 ${amountFontSize}px 'Britti Sans', 'Inter', sans-serif`;
       const textMetrics = ctx.measureText(displayText);
