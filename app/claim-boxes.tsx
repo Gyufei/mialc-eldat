@@ -44,6 +44,84 @@ import SeasonBox from './season-box';
 
 const CURRENT_SEASON = 1;
 
+/**
+ * 检查浏览器是否支持音频合并所需的 WebCodecs API
+ * @returns {boolean} 如果支持所有必需的 API 则返回 true，否则返回 false
+ */
+function checkAudioMergeSupport(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    // 检查 VideoEncoder 是否支持
+    if (typeof VideoEncoder === 'undefined') {
+      console.warn('VideoEncoder is not supported');
+      return false;
+    }
+
+    // 检查 AudioEncoder 是否支持
+    if (typeof AudioEncoder === 'undefined') {
+      console.warn('AudioEncoder is not supported');
+      return false;
+    }
+
+    // 检查 AudioData 是否支持
+    if (typeof AudioData === 'undefined') {
+      console.warn('AudioData is not supported');
+      return false;
+    }
+
+    // 检查 MediaStreamTrackProcessor 是否支持
+    if (typeof MediaStreamTrackProcessor === 'undefined') {
+      console.warn('MediaStreamTrackProcessor is not supported');
+      return false;
+    }
+
+    // 检查 captureStream 方法是否支持
+    const videoElement = document.createElement('video');
+    // @ts-expect-error - captureStream may not be in TypeScript definitions
+    if (typeof videoElement.captureStream !== 'function') {
+      console.warn('captureStream is not supported');
+      return false;
+    }
+
+    // 检查 VideoFrame 是否支持
+    if (typeof VideoFrame === 'undefined') {
+      console.warn('VideoFrame is not supported');
+      return false;
+    }
+
+    // 尝试创建编码器以验证实际可用性
+    try {
+      const testVideoEncoder = new VideoEncoder({
+        output: () => {},
+        error: () => {},
+      });
+      testVideoEncoder.close();
+    } catch (error) {
+      console.warn('VideoEncoder cannot be instantiated:', error);
+      return false;
+    }
+
+    try {
+      const testAudioEncoder = new AudioEncoder({
+        output: () => {},
+        error: () => {},
+      });
+      testAudioEncoder.close();
+    } catch (error) {
+      console.warn('AudioEncoder cannot be instantiated:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.warn('Error checking audio merge support:', error);
+    return false;
+  }
+}
+
 function getSeasonInitWeek(seasonBoxes: AirDropBox[]) {
   const weeks = seasonBoxes.map((box) => box.weeks);
   return Math.max(...weeks);
@@ -598,8 +676,14 @@ export default function ClaimBoxes() {
         target: bufferTarget,
       });
 
-      // 如果不需要添加音频，直接转换并下载
-      if (!audioBuffer) {
+      // 检查浏览器是否支持音频合并功能
+      const supportsAudioMerge = checkAudioMergeSupport();
+
+      // 如果不需要添加音频，或者浏览器不支持音频合并，直接转换并下载
+      if (!audioBuffer || !supportsAudioMerge) {
+        if (!supportsAudioMerge && audioBuffer) {
+          console.warn('Browser does not support audio merging, downloading video without audio');
+        }
         const conversion = await Conversion.init({ input, output });
         if (!conversion.isValid) {
           toast.error('video conversion failed');
@@ -625,272 +709,434 @@ export default function ClaimBoxes() {
 
       // 使用 WebCodecs API 和 mediabunny 合并视频和音频
       // 根据 demo 和迁移指南实现
+      // 注意：如果合并过程中出现任何错误，将回退到只下载视频
 
-      // 使用预处理的音频数据（如果可用），否则重新处理
-      let processedAudioDataToUse = processedAudioData;
-      if (!processedAudioDataToUse && audioBuffer) {
-        // 如果预处理数据不可用，则重新处理（这种情况应该很少发生）
-        const targetDuration = videoDuration;
-        const audioFrameCount = Math.round(targetDuration * audioBuffer.sampleRate);
-        const numChannels = audioBuffer.numberOfChannels;
-        const sampleRate = audioBuffer.sampleRate;
-        const processedAudioBuffer = new AudioContext().createBuffer(
-          numChannels,
-          audioFrameCount,
-          sampleRate
-        );
-
-        const sourceFrameCount = audioBuffer.length;
-        for (let channel = 0; channel < numChannels; channel++) {
-          const sourceData = audioBuffer.getChannelData(channel);
-          const targetData = processedAudioBuffer.getChannelData(channel);
-
-          for (let i = 0; i < audioFrameCount; i++) {
-            targetData[i] = sourceData[i % sourceFrameCount];
-          }
-        }
-
-        const planarData = new Float32Array(numChannels * audioFrameCount);
-        for (let channel = 0; channel < numChannels; channel++) {
-          const channelData = processedAudioBuffer.getChannelData(channel);
-          planarData.set(channelData, channel * audioFrameCount);
-        }
-
-        processedAudioDataToUse = {
-          planarData,
-          sampleRate,
-          numberOfChannels: numChannels,
-          numberOfFrames: audioFrameCount,
-        };
-      }
-
-      // 创建 mediabunny Output（类似 mp4-muxer 的 Muxer）
-      const muxerOutput = new Output({
-        format: new Mp4OutputFormat(),
-        target: new BufferTarget(),
-      });
-
-      // 使用预处理的视频元数据
-      let videoWidth = videoMetadata!.width;
-      let videoHeight = videoMetadata!.height;
-      const frameRate = 30; // 假设 30fps
-      const videoUrl = URL.createObjectURL(blob);
-
-      // H.264 编码器要求宽度和高度必须是偶数
-      // 确保编码器配置的尺寸是偶数
-      videoWidth = Math.floor(videoWidth / 2) * 2;
-      videoHeight = Math.floor(videoHeight / 2) * 2;
-
-      if (videoWidth <= 0 || videoHeight <= 0) {
-        console.error('Invalid video dimensions after rounding:', videoWidth, videoHeight);
-        toast.error('Invalid video dimensions, cannot convert');
-        setIsConverting(false);
-        URL.revokeObjectURL(videoUrl);
-        return;
-      }
-
-      console.log('Video encoder dimensions:', videoWidth, videoHeight);
-
-      // 创建视频和音频编码器源
-      const videoSource = new EncodedVideoPacketSource('avc');
-      const audioSource = new EncodedAudioPacketSource('aac');
-
-      // 添加轨道到 output（必须在 start() 之前）
-      muxerOutput.addVideoTrack(videoSource, {
-        frameRate: frameRate,
-      });
-      muxerOutput.addAudioTrack(audioSource);
-
-      // 启动 output
-      await muxerOutput.start();
-
-      // 创建 WebCodecs 编码器
+      let videoUrl: string | null = null;
       let videoEncoder: VideoEncoder | null = null;
       let audioEncoder: AudioEncoder | null = null;
+      let muxerOutput: Output | null = null;
+      let videoElement: HTMLVideoElement | null = null;
+      let trackProcessor: MediaStreamTrackProcessor<VideoFrame> | null = null;
+      let reader: ReadableStreamDefaultReader<VideoFrame> | null = null;
 
-      // 视频编码器
-      videoEncoder = new VideoEncoder({
-        output: async (chunk, meta) => {
-          const packet = EncodedPacket.fromEncodedChunk(chunk);
-          await videoSource.add(packet, meta);
-        },
-        error: (e) => {
-          console.error('Video encoder error:', e);
-        },
-      });
+      try {
+        // 运行时再次检查关键 API 是否可用
+        if (typeof VideoEncoder === 'undefined' || typeof AudioEncoder === 'undefined' || typeof AudioData === 'undefined') {
+          throw new Error('WebCodecs API not available');
+        }
 
-      // 使用更高的 AVC level 以支持 1920x1080 分辨率
-      // avc1.640028 对应 AVC Level 4.0，支持最大 2048x1024
-      // 或者使用 avc1.64001f 对应 AVC Level 3.1，但需要降低分辨率
-      const codecString =
-        videoWidth * videoHeight > 921600
-          ? 'avc1.640028' // Level 4.0，支持更高分辨率
-          : 'avc1.42001f'; // Level 3.1，适合较低分辨率
+        if (typeof MediaStreamTrackProcessor === 'undefined') {
+          throw new Error('MediaStreamTrackProcessor not available');
+        }
 
-      videoEncoder.configure({
-        codec: codecString,
-        width: videoWidth,
-        height: videoHeight,
-        bitrate: 2e6, // 2 Mbps
-      });
+        // 使用预处理的音频数据（如果可用），否则重新处理
+        let processedAudioDataToUse = processedAudioData;
+        if (!processedAudioDataToUse && audioBuffer) {
+          // 如果预处理数据不可用，则重新处理（这种情况应该很少发生）
+          const targetDuration = videoDuration;
+          const audioFrameCount = Math.round(targetDuration * audioBuffer.sampleRate);
+          const numChannels = audioBuffer.numberOfChannels;
+          const sampleRate = audioBuffer.sampleRate;
+          const processedAudioBuffer = new AudioContext().createBuffer(
+            numChannels,
+            audioFrameCount,
+            sampleRate
+          );
 
-      // 音频编码器
-      audioEncoder = new AudioEncoder({
-        output: async (chunk, meta) => {
-          const packet = EncodedPacket.fromEncodedChunk(chunk);
-          await audioSource.add(packet, meta);
-        },
-        error: (e) => {
-          console.error('Audio encoder error:', e);
-        },
-      });
+          const sourceFrameCount = audioBuffer.length;
+          for (let channel = 0; channel < numChannels; channel++) {
+            const sourceData = audioBuffer.getChannelData(channel);
+            const targetData = processedAudioBuffer.getChannelData(channel);
 
-      audioEncoder.configure({
-        codec: 'mp4a.40.2',
-        numberOfChannels: processedAudioDataToUse!.numberOfChannels,
-        sampleRate: processedAudioDataToUse!.sampleRate,
-        bitrate: 128000,
-      });
-
-      // 从录制的视频中提取视频帧并重新编码
-      const videoElement = document.createElement('video');
-      videoElement.src = videoUrl;
-      videoElement.muted = true;
-
-      await new Promise((resolve, reject) => {
-        videoElement.onloadedmetadata = resolve;
-        videoElement.onerror = reject;
-      });
-
-      // 创建视频流
-      // @ts-expect-error - captureStream may not be in TypeScript definitions
-      const stream = videoElement.captureStream ? videoElement.captureStream() : null;
-      if (!stream) {
-        toast.error('captureStream not supported');
-        setIsConverting(false);
-        return;
-      }
-
-      const videoTrack = stream.getVideoTracks()[0];
-      const trackProcessor = new MediaStreamTrackProcessor({ track: videoTrack });
-      const reader = trackProcessor.readable.getReader();
-
-      // 处理视频帧
-      const processVideoFrames = async () => {
-        let frameCounter = 0;
-        let hasError = false;
-
-        try {
-          videoElement.play();
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            if (value && videoEncoder && videoEncoder.state === 'configured') {
-              try {
-                // value 是 VideoFrame，添加类型断言（通过 unknown 转换）
-                const videoFrame = value as unknown as VideoFrame;
-                const timestamp = (frameCounter * 1000000) / frameRate;
-                // 如果需要修改时间戳，创建新的 VideoFrame
-                const frame = new VideoFrame(videoFrame, { timestamp });
-                videoEncoder.encode(frame, {
-                  keyFrame: frameCounter % (frameRate * 2) === 0, // 每 2 秒一个关键帧
-                });
-                frame.close();
-                videoFrame.close(); // 关闭原始 frame
-                frameCounter++;
-              } catch (error) {
-                console.error('Error encoding frame:', error);
-                hasError = true;
-                break;
-              }
+            for (let i = 0; i < audioFrameCount; i++) {
+              targetData[i] = sourceData[i % sourceFrameCount];
             }
           }
 
-          // 只有在编码器仍然打开时才调用 flush
-          if (videoEncoder && videoEncoder.state !== 'closed' && !hasError) {
-            await videoEncoder.flush();
+          const planarData = new Float32Array(numChannels * audioFrameCount);
+          for (let channel = 0; channel < numChannels; channel++) {
+            const channelData = processedAudioBuffer.getChannelData(channel);
+            planarData.set(channelData, channel * audioFrameCount);
           }
-        } catch (error) {
-          console.error('Error processing video frames:', error);
-          hasError = true;
-        } finally {
-          videoElement.pause();
-          // 确保所有资源都被清理
-          reader.releaseLock();
-          trackProcessor.readable.cancel();
-        }
-      };
 
-      // 处理音频数据（使用预处理的数据）
-      const processAudio = async () => {
+          processedAudioDataToUse = {
+            planarData,
+            sampleRate,
+            numberOfChannels: numChannels,
+            numberOfFrames: audioFrameCount,
+          };
+        }
+
         if (!processedAudioDataToUse) {
-          return;
+          throw new Error('Processed audio data not available');
         }
 
-        // 使用预处理的音频数据
-        const audioData = new AudioData({
-          format: 'f32-planar',
-          sampleRate: processedAudioDataToUse.sampleRate,
-          numberOfFrames: processedAudioDataToUse.numberOfFrames,
-          numberOfChannels: processedAudioDataToUse.numberOfChannels,
-          timestamp: 0,
-          // @ts-expect-error - AudioData accepts ArrayBufferView but TypeScript types may be strict
-          data: processedAudioDataToUse.planarData,
+        // 创建 mediabunny Output（类似 mp4-muxer 的 Muxer）
+        muxerOutput = new Output({
+          format: new Mp4OutputFormat(),
+          target: new BufferTarget(),
         });
 
-        audioEncoder!.encode(audioData);
-        audioData.close();
-        await audioEncoder!.flush();
-      };
+        // 使用预处理的视频元数据
+        let videoWidth = videoMetadata!.width;
+        let videoHeight = videoMetadata!.height;
+        const frameRate = 30; // 假设 30fps
+        videoUrl = URL.createObjectURL(blob);
 
-      // 并行处理视频和音频
-      await Promise.all([processVideoFrames(), processAudio()]);
+        // H.264 编码器要求宽度和高度必须是偶数
+        // 确保编码器配置的尺寸是偶数
+        videoWidth = Math.floor(videoWidth / 2) * 2;
+        videoHeight = Math.floor(videoHeight / 2) * 2;
 
-      // 完成编码（确保编码器仍然打开）
-      if (videoEncoder && videoEncoder.state !== 'closed') {
-        try {
-          await videoEncoder.flush();
-        } catch (error) {
-          console.warn('Video encoder flush error (may already be flushed):', error);
+        if (videoWidth <= 0 || videoHeight <= 0) {
+          throw new Error(`Invalid video dimensions after rounding: ${videoWidth}x${videoHeight}`);
         }
-        videoEncoder.close();
-      }
-      if (audioEncoder && audioEncoder.state !== 'closed') {
+
+        console.log('Video encoder dimensions:', videoWidth, videoHeight);
+
+        // 创建视频和音频编码器源
+        const videoSource = new EncodedVideoPacketSource('avc');
+        const audioSource = new EncodedAudioPacketSource('aac');
+
+        // 添加轨道到 output（必须在 start() 之前）
+        muxerOutput.addVideoTrack(videoSource, {
+          frameRate: frameRate,
+        });
+        muxerOutput.addAudioTrack(audioSource);
+
+        // 启动 output
+        await muxerOutput.start();
+
+        // 创建 WebCodecs 编码器
+        // 视频编码器
+        videoEncoder = new VideoEncoder({
+          output: async (chunk, meta) => {
+            try {
+              const packet = EncodedPacket.fromEncodedChunk(chunk);
+              await videoSource.add(packet, meta);
+            } catch (error) {
+              console.error('Error adding video packet:', error);
+              throw error;
+            }
+          },
+          error: (e) => {
+            console.error('Video encoder error:', e);
+            throw e;
+          },
+        });
+
+        // 使用更高的 AVC level 以支持 1920x1080 分辨率
+        // avc1.640028 对应 AVC Level 4.0，支持最大 2048x1024
+        // 或者使用 avc1.64001f 对应 AVC Level 3.1，但需要降低分辨率
+        const codecString =
+          videoWidth * videoHeight > 921600
+            ? 'avc1.640028' // Level 4.0，支持更高分辨率
+            : 'avc1.42001f'; // Level 3.1，适合较低分辨率
+
         try {
-          await audioEncoder.flush();
+          videoEncoder.configure({
+            codec: codecString,
+            width: videoWidth,
+            height: videoHeight,
+            bitrate: 2e6, // 2 Mbps
+          });
         } catch (error) {
-          console.warn('Audio encoder flush error (may already be flushed):', error);
+          console.error('Failed to configure video encoder:', error);
+          throw new Error('Video encoder configuration failed');
         }
-        audioEncoder.close();
-      }
 
-      // 完成输出
-      await muxerOutput.finalize();
+        // 音频编码器
+        audioEncoder = new AudioEncoder({
+          output: async (chunk, meta) => {
+            try {
+              const packet = EncodedPacket.fromEncodedChunk(chunk);
+              await audioSource.add(packet, meta);
+            } catch (error) {
+              console.error('Error adding audio packet:', error);
+              throw error;
+            }
+          },
+          error: (e) => {
+            console.error('Audio encoder error:', e);
+            throw e;
+          },
+        });
 
-      // 获取最终结果
-      const { buffer: finalBuffer } = muxerOutput.target as BufferTarget;
-      if (!finalBuffer) {
-        toast.error('video conversion failed');
+        try {
+          audioEncoder.configure({
+            codec: 'mp4a.40.2',
+            numberOfChannels: processedAudioDataToUse.numberOfChannels,
+            sampleRate: processedAudioDataToUse.sampleRate,
+            bitrate: 128000,
+          });
+        } catch (error) {
+          console.error('Failed to configure audio encoder:', error);
+          throw new Error('Audio encoder configuration failed');
+        }
+
+        // 从录制的视频中提取视频帧并重新编码
+        videoElement = document.createElement('video');
+        videoElement.src = videoUrl;
+        videoElement.muted = true;
+
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('Video metadata loading timeout'));
+          }, 10000);
+          videoElement!.onloadedmetadata = () => {
+            clearTimeout(timeout);
+            resolve();
+          };
+          videoElement!.onerror = (e) => {
+            clearTimeout(timeout);
+            reject(new Error('Failed to load video metadata'));
+          };
+        });
+
+        // 创建视频流 - 运行时检查 captureStream
+        // @ts-expect-error - captureStream may not be in TypeScript definitions
+        if (!videoElement.captureStream || typeof videoElement.captureStream !== 'function') {
+          throw new Error('captureStream is not supported');
+        }
+
+        // @ts-expect-error - captureStream may not be in TypeScript definitions
+        const stream = videoElement.captureStream();
+        if (!stream) {
+          throw new Error('Failed to create video stream');
+        }
+
+        const videoTrack = stream.getVideoTracks()[0];
+        if (!videoTrack) {
+          throw new Error('No video track found in stream');
+        }
+
+        // 运行时检查 MediaStreamTrackProcessor
+        if (typeof MediaStreamTrackProcessor === 'undefined') {
+          throw new Error('MediaStreamTrackProcessor is not available');
+        }
+
+        trackProcessor = new MediaStreamTrackProcessor({ track: videoTrack }) as unknown as MediaStreamTrackProcessor<VideoFrame>;
+        reader = trackProcessor.readable.getReader();
+
+        // 处理视频帧
+        const processVideoFrames = async () => {
+          let frameCounter = 0;
+          let hasError = false;
+
+          try {
+            await videoElement!.play();
+
+            while (true) {
+              const { done, value } = await reader!.read();
+              if (done) break;
+
+              if (value && videoEncoder && videoEncoder.state === 'configured') {
+                try {
+                  // value 是 VideoFrame，添加类型断言（通过 unknown 转换）
+                  const videoFrame = value as unknown as VideoFrame;
+                  const timestamp = (frameCounter * 1000000) / frameRate;
+                  // 如果需要修改时间戳，创建新的 VideoFrame
+                  const frame = new VideoFrame(videoFrame, { timestamp });
+                  videoEncoder.encode(frame, {
+                    keyFrame: frameCounter % (frameRate * 2) === 0, // 每 2 秒一个关键帧
+                  });
+                  frame.close();
+                  videoFrame.close(); // 关闭原始 frame
+                  frameCounter++;
+                } catch (error) {
+                  console.error('Error encoding frame:', error);
+                  hasError = true;
+                  throw error;
+                }
+              }
+            }
+
+            // 只有在编码器仍然打开时才调用 flush
+            if (videoEncoder && videoEncoder.state !== 'closed' && !hasError) {
+              await videoEncoder.flush();
+            }
+          } catch (error) {
+            console.error('Error processing video frames:', error);
+            hasError = true;
+            throw error;
+          } finally {
+            videoElement!.pause();
+            // 确保所有资源都被清理
+            if (reader) {
+              try {
+                reader.releaseLock();
+              } catch (e) {
+                // 忽略释放锁的错误
+              }
+            }
+            if (trackProcessor) {
+              try {
+                trackProcessor.readable.cancel();
+              } catch (e) {
+                // 忽略取消的错误
+              }
+            }
+          }
+        };
+
+        // 处理音频数据（使用预处理的数据）
+        const processAudio = async () => {
+          if (!processedAudioDataToUse || !audioEncoder) {
+            return;
+          }
+
+          try {
+            // 运行时检查 AudioData
+            if (typeof AudioData === 'undefined') {
+              throw new Error('AudioData is not available');
+            }
+
+            // 使用预处理的音频数据
+            const audioData = new AudioData({
+              format: 'f32-planar',
+              sampleRate: processedAudioDataToUse.sampleRate,
+              numberOfFrames: processedAudioDataToUse.numberOfFrames,
+              numberOfChannels: processedAudioDataToUse.numberOfChannels,
+              timestamp: 0,
+              // @ts-expect-error - AudioData accepts ArrayBufferView but TypeScript types may be strict
+              data: processedAudioDataToUse.planarData,
+            });
+
+            audioEncoder.encode(audioData);
+            audioData.close();
+            await audioEncoder.flush();
+          } catch (error) {
+            console.error('Error processing audio:', error);
+            throw error;
+          }
+        };
+
+        // 并行处理视频和音频
+        await Promise.all([processVideoFrames(), processAudio()]);
+
+        // 完成编码（确保编码器仍然打开）
+        if (videoEncoder && videoEncoder.state !== 'closed') {
+          try {
+            await videoEncoder.flush();
+          } catch (error) {
+            console.warn('Video encoder flush error (may already be flushed):', error);
+          }
+          videoEncoder.close();
+        }
+        if (audioEncoder && audioEncoder.state !== 'closed') {
+          try {
+            await audioEncoder.flush();
+          } catch (error) {
+            console.warn('Audio encoder flush error (may already be flushed):', error);
+          }
+          audioEncoder.close();
+        }
+
+        // 完成输出
+        await muxerOutput.finalize();
+
+        // 获取最终结果
+        const { buffer: finalBuffer } = muxerOutput.target as BufferTarget;
+        if (!finalBuffer) {
+          throw new Error('Failed to get final buffer from muxer');
+        }
+
+        const mp4Blob = new Blob([finalBuffer], { type: 'video/mp4' });
+        const url = URL.createObjectURL(mp4Blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = randomFileName;
+        a.click();
+        URL.revokeObjectURL(url);
+        if (videoUrl) {
+          URL.revokeObjectURL(videoUrl);
+        }
+        return; // 成功完成，直接返回
+      } catch (error) {
+        console.warn('Audio merge failed, falling back to video-only download:', error);
+        
+        // 清理资源
+        try {
+          if (videoEncoder && videoEncoder.state !== 'closed') {
+            videoEncoder.close();
+          }
+        } catch (e) {
+          // 忽略清理错误
+        }
+        try {
+          if (audioEncoder && audioEncoder.state !== 'closed') {
+            audioEncoder.close();
+          }
+        } catch (e) {
+          // 忽略清理错误
+        }
+        if (videoUrl) {
+          URL.revokeObjectURL(videoUrl);
+        }
+        if (videoElement) {
+          videoElement.pause();
+          videoElement.src = '';
+        }
+        if (reader) {
+          try {
+            reader.releaseLock();
+          } catch (e) {
+            // 忽略释放锁的错误
+          }
+        }
+        if (trackProcessor) {
+          try {
+            trackProcessor.readable.cancel();
+          } catch (e) {
+            // 忽略取消的错误
+          }
+        }
+
+        // 回退到只下载视频（不合并音频）
+        console.log('Falling back to video-only download');
+        try {
+          const fallbackInput = new MediaInput({
+            source: new BlobSource(blob),
+            formats: mimeType.startsWith('video/mp4') ? [MP4] : [WEBM],
+          } as unknown as ConstructorParameters<typeof MediaInput>[0]);
+          const fallbackBufferTarget = new BufferTarget();
+          const fallbackOutput = new Output({
+            format: new Mp4OutputFormat(),
+            target: fallbackBufferTarget,
+          });
+
+          const fallbackConversion = await Conversion.init({ input: fallbackInput, output: fallbackOutput });
+          if (!fallbackConversion.isValid) {
+            toast.error('video conversion failed');
+            setIsConverting(false);
+            return;
+          }
+          await fallbackConversion.execute();
+          const { buffer: fallbackBuffer } = fallbackBufferTarget;
+          if (!fallbackBuffer) {
+            toast.error('video conversion failed');
+            setIsConverting(false);
+            return;
+          }
+          const fallbackMp4Blob = new Blob([fallbackBuffer], { type: 'video/mp4' });
+          const fallbackUrl = URL.createObjectURL(fallbackMp4Blob);
+          const fallbackA = document.createElement('a');
+          fallbackA.href = fallbackUrl;
+          fallbackA.download = randomFileName;
+          fallbackA.click();
+          URL.revokeObjectURL(fallbackUrl);
+        } catch (fallbackError) {
+          console.error('Fallback video conversion also failed:', fallbackError);
+          toast.error('video conversion failed');
+          setIsConverting(false);
+          return;
+        }
+      } finally {
         setIsConverting(false);
-        return;
       }
-
-      const mp4Blob = new Blob([finalBuffer], { type: 'video/mp4' });
-      const url = URL.createObjectURL(mp4Blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = randomFileName;
-      a.click();
-      URL.revokeObjectURL(url);
-      URL.revokeObjectURL(videoUrl);
-    } catch (error) {
-      console.error(error);
-      toast.error('video conversion error');
-    } finally {
-      setIsConverting(false);
-    }
+      } finally {
+        setIsConverting(false);
+      }
   };
 
   const handleOpenBox = (boxId: string) => {
