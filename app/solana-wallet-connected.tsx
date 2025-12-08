@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 
+import { isMultiWalletEnabled } from '@/lib/constants';
 import { cn, fmtAddr } from '@/lib/utils';
 
 import SolanaWallets from './icon/solana-wallets';
@@ -75,12 +76,7 @@ export default function SolanaWalletConnected({ size = 'lg' }: { size?: 'lg' | '
                   size === 'sm' ? 'text-sm' : 'text-base',
                 )}
               >
-                <div
-                  className={cn(
-                    'flex items-center',
-                    size === 'sm' ? 'gap-1' : 'gap-[5px]',
-                  )}
-                >
+                <div className={cn('flex items-center', size === 'sm' ? 'gap-1' : 'gap-[5px]')}>
                   <span className="truncate">Solana Wallet</span>
                 </div>
               </h4>
@@ -98,22 +94,22 @@ export default function SolanaWalletConnected({ size = 'lg' }: { size?: 'lg' | '
                 >
                   {isNoWallet ? (
                     <span>Not Connected</span>
-                  ) : (
+                  ) : isMultiWalletEnabled ? (
                     <>
                       <span>{solanaWallets?.length}/8 connected</span>
                       <ChevronDown
                         className={cn('w-4 h-4 transition-transform', isOpen ? 'rotate-180' : '')}
                       />
                     </>
+                  ) : (
+                    <span>/8 connected</span>
                   )}
                 </div>
               </div>
             </div>
           </div>
         </button>
-        <CollapsibleContent
-          className={cn('flex flex-col', size === 'sm' ? 'gap-1.5' : 'gap-2')}
-        >
+        <CollapsibleContent className={cn('flex flex-col', size === 'sm' ? 'gap-1.5' : 'gap-2')}>
           <div
             data-orientation="horizontal"
             className="bg-border shrink-0 data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-px"
@@ -127,12 +123,14 @@ export default function SolanaWalletConnected({ size = 'lg' }: { size?: 'lg' | '
                 <div className="flex items-center justify-between text-xs gap-x-4">
                   <div className={cn('flex flex-row', size === 'sm' ? 'gap-2.5' : 'gap-3')}>
                     <Wallet
-                      className={cn(
-                        'text-secondary',
-                        size === 'sm' ? 'w-4 h-4' : 'w-5 h-5',
-                      )}
+                      className={cn('text-secondary', size === 'sm' ? 'w-4 h-4' : 'w-5 h-5')}
                     />
-                    <div className={cn('flex flex-col items-start', size === 'sm' ? 'gap-1.5' : 'gap-2')}>
+                    <div
+                      className={cn(
+                        'flex flex-col items-start',
+                        size === 'sm' ? 'gap-1.5' : 'gap-2',
+                      )}
+                    >
                       <button
                         className={cn(
                           'justify-center gap-2 whitespace-nowrap font-medium focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer font-britti-sans rounded-full duration-200 active:scale-[0.98] disabled:active:scale-100 hover:text-neutral-500 flex items-center p-0 h-auto hover:opacity-70 transition-opacity',
@@ -173,7 +171,7 @@ export default function SolanaWalletConnected({ size = 'lg' }: { size?: 'lg' | '
             ))}
           </>
         </CollapsibleContent>
-        {!isNoWallet && !isFullWallet && (
+        {!isNoWallet && !isFullWallet && isMultiWalletEnabled && (
           <>
             <div
               data-orientation="horizontal"

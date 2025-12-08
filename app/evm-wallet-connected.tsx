@@ -6,6 +6,7 @@ import { useMemo, useState } from 'react';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
+import { isMultiWalletEnabled } from '@/lib/constants';
 import { cn, fmtAddr } from '@/lib/utils';
 
 import EVMWallets from './icon/evm-wallets';
@@ -58,7 +59,10 @@ export default function EvmWalletConnected({ size = 'lg' }: { size?: 'lg' | 'sm'
           <span
             className="inline-flex shrink-0"
             draggable="false"
-            style={{ width: size === 'sm' ? 40 : 48, height: size === 'sm' ? 40 : 48 }}
+            style={{
+              width: size === 'sm' ? 40 : 48,
+              height: size === 'sm' ? 40 : 48,
+            }}
           >
             <span>
               <EVMWallets fillColor={evmWallets?.length > 0 ? '#B8B4FE' : '#52525B'} />
@@ -77,12 +81,7 @@ export default function EvmWalletConnected({ size = 'lg' }: { size?: 'lg' | 'sm'
                   size === 'sm' ? 'text-sm' : 'text-base',
                 )}
               >
-                <div
-                  className={cn(
-                    'flex items-center',
-                    size === 'sm' ? 'gap-1' : 'gap-[5px]',
-                  )}
-                >
+                <div className={cn('flex items-center', size === 'sm' ? 'gap-1' : 'gap-[5px]')}>
                   <span className="truncate">EVM Wallet</span>
                   <Tooltip>
                     <TooltipTrigger>
@@ -115,22 +114,22 @@ export default function EvmWalletConnected({ size = 'lg' }: { size?: 'lg' | 'sm'
                 >
                   {isNoWallet ? (
                     <span>Not Connected</span>
-                  ) : (
+                  ) : isMultiWalletEnabled ? (
                     <>
                       <span>{evmWallets?.length}/8 connected</span>
                       <ChevronDown
                         className={cn('w-4 h-4 transition-transform', isOpen ? 'rotate-180' : '')}
                       />
                     </>
+                  ) : (
+                    <span>/8 connected</span>
                   )}
                 </div>
               </div>
             </div>
           </div>
         </button>
-        <CollapsibleContent
-          className={cn('flex flex-col', size === 'sm' ? 'gap-1.5' : 'gap-2')}
-        >
+        <CollapsibleContent className={cn('flex flex-col', size === 'sm' ? 'gap-1.5' : 'gap-2')}>
           <div
             data-orientation="horizontal"
             role="none"
@@ -146,12 +145,14 @@ export default function EvmWalletConnected({ size = 'lg' }: { size?: 'lg' | 'sm'
                 <div className="flex items-center justify-between text-xs gap-x-4">
                   <div className={cn('flex flex-row', size === 'sm' ? 'gap-2.5' : 'gap-3')}>
                     <Wallet
-                      className={cn(
-                        'text-secondary',
-                        size === 'sm' ? 'w-4 h-4' : 'w-5 h-5',
-                      )}
+                      className={cn('text-secondary', size === 'sm' ? 'w-4 h-4' : 'w-5 h-5')}
                     />
-                    <div className={cn('flex flex-col items-start', size === 'sm' ? 'gap-1.5' : 'gap-2')}>
+                    <div
+                      className={cn(
+                        'flex flex-col items-start',
+                        size === 'sm' ? 'gap-1.5' : 'gap-2',
+                      )}
+                    >
                       <button
                         className={cn(
                           'justify-center gap-2 whitespace-nowrap font-medium focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer font-britti-sans rounded-full duration-200 active:scale-[0.98] disabled:active:scale-100 hover:text-neutral-500 flex items-center p-0 h-auto hover:opacity-70 transition-opacity',
@@ -192,7 +193,7 @@ export default function EvmWalletConnected({ size = 'lg' }: { size?: 'lg' | 'sm'
             ))}
           </>
         </CollapsibleContent>
-        {!isNoWallet && !isFullWallet && (
+        {!isNoWallet && !isFullWallet && isMultiWalletEnabled && (
           <>
             <div
               data-orientation="horizontal"
