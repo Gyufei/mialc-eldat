@@ -3,16 +3,18 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { motion } from 'framer-motion';
 import { Download, Loader } from 'lucide-react';
 import {
+  AudioBufferSource,
   BlobSource,
   BufferTarget,
   Conversion,
-  EncodedAudioPacketSource,
+  // EncodedAudioPacketSource,
   EncodedPacket,
   EncodedVideoPacketSource,
   MP4,
   Input as MediaInput,
   Mp4OutputFormat,
   Output,
+  QUALITY_HIGH,
   WEBM,
 } from 'mediabunny';
 import { toast } from 'sonner';
@@ -645,60 +647,26 @@ export default function ClaimBoxes() {
       setDownloadProgress(0);
       await new Promise((resolve) => setTimeout(resolve, 16)); // 等待UI更新
 
-      // 启动自动递增进度条
-      // 总时间约20秒，最大到95%，增量递减
-      const TARGET_TIME = 20000; // 20秒
-      const MAX_PROGRESS = 95; // 最大进度95%
-      const UPDATE_INTERVAL = 100; // 每100ms更新一次
-      const TOTAL_UPDATES = TARGET_TIME / UPDATE_INTERVAL; // 总共200次更新
-
-      let currentProgress = 0;
-      let updateCount = 0;
-
-      // 计算每次的增量，使用递减算法
-      // 开始时增量大，逐渐变小
-      const getIncrement = (progress: number, remainingUpdates: number) => {
-        // 使用平方根函数使递减更平滑
-        const progressRatio = progress / MAX_PROGRESS;
-        // 剩余进度 / 剩余更新次数，但根据进度比例调整
-        const baseIncrement = (MAX_PROGRESS - progress) / remainingUpdates;
-        // 开始时速度较快，逐渐变慢
-        const speedFactor = 1 - progressRatio * 0.7; // 从1.0递减到0.3
-        return baseIncrement * speedFactor;
+      // 改进的进度回调：使用真实进度而不是模拟进度条
+      const updateProgress = (progress: number) => {
+        // progress 是 0-1 之间的值，转换为 0-100
+        setDownloadProgress(Math.min(100, Math.max(0, Math.floor(progress * 100))));
       };
 
-      progressTimerRef.current = setInterval(() => {
-        updateCount++;
-        const remainingUpdates = TOTAL_UPDATES - updateCount;
-
-        if (remainingUpdates <= 0 || currentProgress >= MAX_PROGRESS) {
-          // 达到最大进度或时间到了
-          if (progressTimerRef.current) {
-            clearInterval(progressTimerRef.current);
-            progressTimerRef.current = null;
-          }
-          setDownloadProgress(MAX_PROGRESS);
-          return;
-        }
-
-        const increment = getIncrement(currentProgress, remainingUpdates);
-        currentProgress = Math.min(currentProgress + increment, MAX_PROGRESS);
-        setDownloadProgress(Math.floor(currentProgress));
-      }, UPDATE_INTERVAL);
-
-      // 辅助函数：停止进度并跳到100%
+      // 辅助函数：完成进度
       const completeProgress = () => {
-        if (progressTimerRef.current) {
-          clearInterval(progressTimerRef.current);
-          progressTimerRef.current = null;
-        }
         setDownloadProgress(100);
+      };
+
+      // 进度回调函数（传递给处理函数）
+      const onProgress = (progress: number) => {
+        updateProgress(progress);
       };
 
       // 使用预处理的音频数据（如果可用），否则重新加载
       let audioBuffer: AudioBuffer | null = audioBufferRef.current;
       let videoMetadata = videoMetadataRef.current;
-      const processedAudioData = processedAudioDataRef.current;
+      // const processedAudioData = processedAudioDataRef.current;
 
       // 如果预处理数据不可用，则重新加载
       if (!audioBuffer) {
@@ -787,6 +755,7 @@ export default function ClaimBoxes() {
         if (!supportsAudioMerge && audioBuffer) {
           console.warn('Browser does not support audio merging, downloading video without audio');
         }
+        onProgress(0.1); // 开始转换
         const conversion = await Conversion.init({ input, output });
         if (!conversion.isValid) {
           toast.error('video conversion failed');
@@ -796,7 +765,9 @@ export default function ClaimBoxes() {
           setTimeout(() => setDownloadProgress(0), 200);
           return;
         }
+        onProgress(0.5); // 转换中
         await conversion.execute();
+        onProgress(0.9); // 转换完成
         const { buffer } = bufferTarget;
         if (!buffer) {
           toast.error('video conversion failed');
@@ -821,12 +792,12 @@ export default function ClaimBoxes() {
       }
 
       // 使用 WebCodecs API 和 mediabunny 合并视频和音频
-      // 根据 demo 和迁移指南实现
+      // 优化：使用 AudioBufferSource 简化音频处理，使用质量常量替代硬编码 bitrate
       // 注意：如果合并过程中出现任何错误，将回退到只下载视频
 
       let videoUrl: string | null = null;
       let videoEncoder: VideoEncoder | null = null;
-      let audioEncoder: AudioEncoder | null = null;
+      let audioSource: AudioBufferSource | null = null;
       let muxerOutput: Output | null = null;
       let videoElement: HTMLVideoElement | null = null;
       let trackProcessor: MediaStreamTrackProcessor<VideoFrame> | null = null;
@@ -834,32 +805,29 @@ export default function ClaimBoxes() {
 
       try {
         // 运行时再次检查关键 API 是否可用
-        if (
-          typeof VideoEncoder === 'undefined' ||
-          typeof AudioEncoder === 'undefined' ||
-          typeof AudioData === 'undefined'
-        ) {
-          throw new Error('WebCodecs API not available');
+        if (typeof VideoEncoder === 'undefined') {
+          throw new Error('VideoEncoder not available');
         }
 
         if (typeof MediaStreamTrackProcessor === 'undefined') {
           throw new Error('MediaStreamTrackProcessor not available');
         }
 
-        // 使用预处理的音频数据（如果可用），否则重新处理
-        let processedAudioDataToUse = processedAudioData;
-        if (!processedAudioDataToUse && audioBuffer) {
-          // 如果预处理数据不可用，则重新处理（这种情况应该很少发生）
+        // 创建处理后的音频缓冲区（如果还没有）
+        let processedAudioBuffer: AudioBuffer | null = null;
+        if (audioBuffer) {
           const targetDuration = videoDuration;
           const audioFrameCount = Math.round(targetDuration * audioBuffer.sampleRate);
           const numChannels = audioBuffer.numberOfChannels;
           const sampleRate = audioBuffer.sampleRate;
-          const processedAudioBuffer = new AudioContext().createBuffer(
+          const audioContext = new AudioContext();
+          processedAudioBuffer = audioContext.createBuffer(
             numChannels,
             audioFrameCount,
             sampleRate,
           );
 
+          // 如果音频比视频短，则循环填充；如果长，则截取
           const sourceFrameCount = audioBuffer.length;
           for (let channel = 0; channel < numChannels; channel++) {
             const sourceData = audioBuffer.getChannelData(channel);
@@ -869,26 +837,9 @@ export default function ClaimBoxes() {
               targetData[i] = sourceData[i % sourceFrameCount];
             }
           }
-
-          const planarData = new Float32Array(numChannels * audioFrameCount);
-          for (let channel = 0; channel < numChannels; channel++) {
-            const channelData = processedAudioBuffer.getChannelData(channel);
-            planarData.set(channelData, channel * audioFrameCount);
-          }
-
-          processedAudioDataToUse = {
-            planarData,
-            sampleRate,
-            numberOfChannels: numChannels,
-            numberOfFrames: audioFrameCount,
-          };
         }
 
-        if (!processedAudioDataToUse) {
-          throw new Error('Processed audio data not available');
-        }
-
-        // 创建 mediabunny Output（类似 mp4-muxer 的 Muxer）
+        // 创建 mediabunny Output
         muxerOutput = new Output({
           format: new Mp4OutputFormat(),
           target: new BufferTarget(),
@@ -911,21 +862,28 @@ export default function ClaimBoxes() {
 
         console.log('Video encoder dimensions:', videoWidth, videoHeight);
 
-        // 创建视频和音频编码器源
+        // 创建视频编码器源
         const videoSource = new EncodedVideoPacketSource('avc');
-        const audioSource = new EncodedAudioPacketSource('aac');
 
-        // 添加轨道到 output（必须在 start() 之前）
+        // 添加视频轨道到 output（必须在 start() 之前）
         muxerOutput.addVideoTrack(videoSource, {
           frameRate: frameRate,
         });
-        muxerOutput.addAudioTrack(audioSource);
+
+        // 添加音频轨道（如果提供音频）
+        if (processedAudioBuffer) {
+          // 使用 AudioBufferSource 简化音频处理
+          audioSource = new AudioBufferSource({
+            codec: 'aac',
+            bitrate: QUALITY_HIGH, // 使用质量常量替代硬编码
+          });
+          muxerOutput.addAudioTrack(audioSource);
+        }
 
         // 启动 output
         await muxerOutput.start();
 
-        // 创建 WebCodecs 编码器
-        // 视频编码器
+        // 创建 WebCodecs 视频编码器
         videoEncoder = new VideoEncoder({
           output: async (chunk, meta) => {
             try {
@@ -955,40 +913,18 @@ export default function ClaimBoxes() {
             codec: codecString,
             width: videoWidth,
             height: videoHeight,
-            bitrate: 2e6, // 2 Mbps
+            bitrate: 2e6, // 2 Mbps (VideoEncoder 需要 number 类型，不能使用 QUALITY_HIGH)
           });
         } catch (error) {
           console.error('Failed to configure video encoder:', error);
           throw new Error('Video encoder configuration failed');
         }
 
-        // 音频编码器
-        audioEncoder = new AudioEncoder({
-          output: async (chunk, meta) => {
-            try {
-              const packet = EncodedPacket.fromEncodedChunk(chunk);
-              await audioSource.add(packet, meta);
-            } catch (error) {
-              console.error('Error adding audio packet:', error);
-              throw error;
-            }
-          },
-          error: (e) => {
-            console.error('Audio encoder error:', e);
-            throw e;
-          },
-        });
-
-        try {
-          audioEncoder.configure({
-            codec: 'mp4a.40.2',
-            numberOfChannels: processedAudioDataToUse.numberOfChannels,
-            sampleRate: processedAudioDataToUse.sampleRate,
-            bitrate: 128000,
-          });
-        } catch (error) {
-          console.error('Failed to configure audio encoder:', error);
-          throw new Error('Audio encoder configuration failed');
+        // 添加音频数据（使用 AudioBufferSource，无需手动编码）
+        if (audioSource && processedAudioBuffer) {
+          onProgress?.(0.05); // 5% 用于音频处理
+          await audioSource.add(processedAudioBuffer);
+          audioSource.close();
         }
 
         // 从录制的视频中提取视频帧并重新编码
@@ -1037,10 +973,11 @@ export default function ClaimBoxes() {
         }) as unknown as MediaStreamTrackProcessor<VideoFrame>;
         reader = trackProcessor.readable.getReader();
 
-        // 处理视频帧
+        // 处理视频帧（改进进度回调）
         const processVideoFrames = async () => {
           let frameCounter = 0;
           let hasError = false;
+          const totalFrames = Math.ceil(videoDuration * frameRate);
 
           try {
             await videoElement!.play();
@@ -1062,6 +999,13 @@ export default function ClaimBoxes() {
                   frame.close();
                   videoFrame.close(); // 关闭原始 frame
                   frameCounter++;
+
+                  // 更新进度（基于实际处理进度）
+                  // 音频处理占 5%，视频处理占 95%
+                  const videoProgress = processedAudioBuffer
+                    ? 0.05 + (frameCounter / totalFrames) * 0.95
+                    : frameCounter / totalFrames;
+                  onProgress?.(videoProgress);
                 } catch (error) {
                   console.error('Error encoding frame:', error);
                   hasError = true;
@@ -1098,40 +1042,8 @@ export default function ClaimBoxes() {
           }
         };
 
-        // 处理音频数据（使用预处理的数据）
-        const processAudio = async () => {
-          if (!processedAudioDataToUse || !audioEncoder) {
-            return;
-          }
-
-          try {
-            // 运行时检查 AudioData
-            if (typeof AudioData === 'undefined') {
-              throw new Error('AudioData is not available');
-            }
-
-            // 使用预处理的音频数据
-            const audioData = new AudioData({
-              format: 'f32-planar',
-              sampleRate: processedAudioDataToUse.sampleRate,
-              numberOfFrames: processedAudioDataToUse.numberOfFrames,
-              numberOfChannels: processedAudioDataToUse.numberOfChannels,
-              timestamp: 0,
-              // @ts-expect-error - AudioData accepts ArrayBufferView but TypeScript types may be strict
-              data: processedAudioDataToUse.planarData,
-            });
-
-            audioEncoder.encode(audioData);
-            audioData.close();
-            await audioEncoder.flush();
-          } catch (error) {
-            console.error('Error processing audio:', error);
-            throw error;
-          }
-        };
-
-        // 并行处理视频和音频
-        await Promise.all([processVideoFrames(), processAudio()]);
+        // 处理视频帧（音频已通过 AudioBufferSource 处理）
+        await processVideoFrames();
 
         // 完成编码（确保编码器仍然打开）
         if (videoEncoder && videoEncoder.state !== 'closed') {
@@ -1141,14 +1053,6 @@ export default function ClaimBoxes() {
             console.warn('Video encoder flush error (may already be flushed):', error);
           }
           videoEncoder.close();
-        }
-        if (audioEncoder && audioEncoder.state !== 'closed') {
-          try {
-            await audioEncoder.flush();
-          } catch (error) {
-            console.warn('Audio encoder flush error (may already be flushed):', error);
-          }
-          audioEncoder.close();
         }
 
         // 完成输出
@@ -1187,8 +1091,8 @@ export default function ClaimBoxes() {
           // 忽略清理错误
         }
         try {
-          if (audioEncoder && audioEncoder.state !== 'closed') {
-            audioEncoder.close();
+          if (audioSource) {
+            audioSource.close();
           }
         } catch (_e) {
           // 忽略清理错误
@@ -1228,6 +1132,7 @@ export default function ClaimBoxes() {
             target: fallbackBufferTarget,
           });
 
+          onProgress(0.1); // 开始回退转换
           const fallbackConversion = await Conversion.init({
             input: fallbackInput,
             output: fallbackOutput,
@@ -1240,7 +1145,9 @@ export default function ClaimBoxes() {
             setTimeout(() => setDownloadProgress(0), 200);
             return;
           }
+          onProgress(0.5); // 回退转换中
           await fallbackConversion.execute();
+          onProgress(0.9); // 回退转换完成
           const { buffer: fallbackBuffer } = fallbackBufferTarget;
           if (!fallbackBuffer) {
             toast.error('video conversion failed');
