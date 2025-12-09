@@ -1062,30 +1062,51 @@ export default function ClaimBoxes() {
               const { done, value } = await reader!.read();
               if (done) break;
 
-              if (value && videoEncoder && videoEncoder.state === 'configured') {
-                try {
-                  // value 是 VideoFrame，添加类型断言（通过 unknown 转换）
-                  const videoFrame = value as unknown as VideoFrame;
-                  const timestamp = (frameCounter * 1000000) / frameRate;
-                  // 如果需要修改时间戳，创建新的 VideoFrame
-                  const frame = new VideoFrame(videoFrame, { timestamp });
-                  videoEncoder.encode(frame, {
-                    keyFrame: frameCounter % (frameRate * 2) === 0, // 每 2 秒一个关键帧
-                  });
-                  frame.close();
-                  videoFrame.close(); // 关闭原始 frame
-                  frameCounter++;
+              // 确保所有 VideoFrame 都被关闭
+              let videoFrame: VideoFrame | null = null;
+              let frame: VideoFrame | null = null;
 
-                  // 更新进度（基于实际处理进度）
-                  // 音频处理占 5%，视频处理占 95%
-                  const videoProgress = processedAudioBuffer
-                    ? 0.05 + (frameCounter / totalFrames) * 0.95
-                    : frameCounter / totalFrames;
-                  onProgress?.(videoProgress);
-                } catch (error) {
-                  console.error('Error encoding frame:', error);
-                  hasError = true;
-                  throw error;
+              try {
+                if (value) {
+                  // value 是 VideoFrame，添加类型断言（通过 unknown 转换）
+                  videoFrame = value as unknown as VideoFrame;
+
+                  if (videoEncoder && videoEncoder.state === 'configured') {
+                    const timestamp = (frameCounter * 1000000) / frameRate;
+                    // 如果需要修改时间戳，创建新的 VideoFrame
+                    frame = new VideoFrame(videoFrame, { timestamp });
+                    videoEncoder.encode(frame, {
+                      keyFrame: frameCounter % (frameRate * 2) === 0, // 每 2 秒一个关键帧
+                    });
+                    frameCounter++;
+
+                    // 更新进度（基于实际处理进度）
+                    // 音频处理占 5%，视频处理占 95%
+                    const videoProgress = processedAudioBuffer
+                      ? 0.05 + (frameCounter / totalFrames) * 0.95
+                      : frameCounter / totalFrames;
+                    onProgress?.(videoProgress);
+                  }
+                }
+              } catch (error) {
+                console.error('Error encoding frame:', error);
+                hasError = true;
+                throw error;
+              } finally {
+                // 确保所有 VideoFrame 都被关闭
+                if (frame) {
+                  try {
+                    frame.close();
+                  } catch (_e) {
+                    // 忽略关闭错误
+                  }
+                }
+                if (videoFrame) {
+                  try {
+                    videoFrame.close();
+                  } catch (_e) {
+                    // 忽略关闭错误
+                  }
                 }
               }
             }
