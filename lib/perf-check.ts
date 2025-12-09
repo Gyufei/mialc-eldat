@@ -174,7 +174,7 @@ export async function assessDevicePerformance(options: PerfCheckOptions): Promis
 
   // 根据关键指标判断风险
   let risk: 'low' | 'medium' | 'high' = 'medium';
-  const lowFps = !!rafFps && rafFps < 40;
+  const lowFps = !!rafFps && rafFps < 30;
   const weakCpu = !!hardwareConcurrency && hardwareConcurrency < 4;
   const weakMem = !!deviceMemory && deviceMemory < 4;
   const noWebCodecs = !webCodecsAvailable;
@@ -210,7 +210,7 @@ export function shouldDiscourageDownload(
   const t: DiscourageThresholds = {
     minHardwareConcurrency: 4,
     minDeviceMemoryGb: 4,
-    minRafFps: 40,
+    minRafFps: 30,
     requireSmoothEncoding: true,
     ...thresholds,
   };
