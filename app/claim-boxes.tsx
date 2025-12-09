@@ -793,7 +793,7 @@ export default function ClaimBoxes() {
           frameRate: 30,
         });
         if (shouldDiscourageDownload(perf)) {
-          console.warn('handleDownloadVideo ~ perf:', perf);
+          console.log('handleDownloadVideo ~ perf:', perf);
           // 取消下载并重置进度loading
           if (progressTimerRef.current) {
             clearInterval(progressTimerRef.current);
