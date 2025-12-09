@@ -748,6 +748,13 @@ export default function ClaimBoxes() {
           frameRate: 30,
         });
         if (shouldDiscourageDownload(perf)) {
+          console.warn('handleDownloadVideo ~ perf:', perf);
+          // 取消下载并重置进度loading
+          if (progressTimerRef.current) {
+            clearInterval(progressTimerRef.current);
+            progressTimerRef.current = null;
+          }
+          setDownloadProgress(0);
           setIsConverting(false);
           toast.warning(
             'Page performance is insufficient. Please close high‑load tabs or applications and try downloading again.',
@@ -755,7 +762,7 @@ export default function ClaimBoxes() {
           return;
         }
       } catch (err) {
-        console.warn('性能检测失败，继续下载流程', err);
+        console.warn('performance check error', err);
       }
 
       // 创建输入（支持 MP4 和 WebM）
