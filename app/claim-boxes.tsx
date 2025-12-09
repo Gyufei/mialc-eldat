@@ -245,6 +245,10 @@ export default function ClaimBoxes() {
   const processedVideoBlobRef = useRef<Blob | null>(null); // 缓存处理后的最终视频 blob
   const [videoElementForCanvas, setVideoElementForCanvas] = useState<HTMLVideoElement | null>(null);
 
+  // 新增：资源管理相关的 refs
+  const renderLoopIdRef = useRef<number | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+
   // 音频预处理相关（前置优化）
   const audioBufferRef = useRef<AudioBuffer | null>(null);
   const processedAudioDataRef = useRef<{
@@ -304,6 +308,65 @@ export default function ClaimBoxes() {
   const totalTfeTle = calcTotalRevealed(seasonBoxes, 'TLE', 'tfe_amount');
   const totalTtTle = calcTotalRevealed(seasonBoxes, 'TLE', 'tt_amount');
 
+  // 获取或创建 AudioContext（避免重复创建）
+  const getAudioContext = useCallback(() => {
+    if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+      audioContextRef.current = new AudioContext();
+    }
+    return audioContextRef.current;
+  }, []);
+
+  // 全局资源清理函数
+  const cleanupAllResources = useCallback(() => {
+    // 清理 requestAnimationFrame 循环
+    if (renderLoopIdRef.current !== null) {
+      cancelAnimationFrame(renderLoopIdRef.current);
+      renderLoopIdRef.current = null;
+    }
+
+    // 清理 AudioContext
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      audioContextRef.current.close().catch(() => {
+        // 忽略关闭错误
+      });
+      audioContextRef.current = null;
+    }
+
+    // 清理录制资源
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.onstop = null;
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
+      } catch (_e) {
+        // 忽略清理错误
+      }
+    }
+    mediaRecorderRef.current = null;
+
+    // 清理视频元素
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.src = '';
+      videoRef.current.load();
+    }
+
+    // 清空所有 blob 和数据引用，帮助垃圾回收
+    recordedChunksRef.current = [];
+    recordedBlobRef.current = null;
+    recordedMimeTypeRef.current = '';
+    processedVideoBlobRef.current = null;
+
+    // 不清理这些缓存数据，以便重复使用
+    // audioBufferRef.current = null;
+    // videoMetadataRef.current = null;
+    // processedAudioDataRef.current = null;
+
+    // 清空当前 canvas 引用
+    canvasRef.current = null;
+    setVideoElementForCanvas(null);
+  }, []);
+
   const closeReveal = useCallback(() => {
     if (animationTimerRef.current) {
       clearTimeout(animationTimerRef.current);
@@ -324,27 +387,13 @@ export default function ClaimBoxes() {
       progressTimerRef.current = null;
     }
 
-    // 关闭弹窗时停止录制但不触发下载，并清理录制状态
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.onstop = null;
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
-    }
-    mediaRecorderRef.current = null;
-    recordedChunksRef.current = [];
-    recordedBlobRef.current = null;
-    recordedMimeTypeRef.current = '';
-    processedVideoBlobRef.current = null; // 清理缓存的处理后的视频
+    // 使用统一的清理函数
+    cleanupAllResources();
 
     if (videoRef.current) {
-      videoRef.current.pause();
       videoRef.current.currentTime = 0;
     }
-
-    // 清空当前 canvas 引用，下一次打开时通过重新挂载组件获得全新的 canvas
-    canvasRef.current = null;
-    setVideoElementForCanvas(null);
-  }, []);
+  }, [cleanupAllResources]);
 
   const openReveal = useCallback(() => {
     if (animationTimerRef.current) {
@@ -406,6 +455,13 @@ export default function ClaimBoxes() {
       }
     };
   }, []);
+
+  // 组件卸载时清理所有资源
+  useEffect(() => {
+    return () => {
+      cleanupAllResources();
+    };
+  }, [cleanupAllResources]);
 
   useEffect(() => {
     if (isError) {
@@ -544,7 +600,7 @@ export default function ClaimBoxes() {
                   try {
                     const audioResponse = await fetch('/video/PE93NhltTYob96tF.mp3');
                     const audioArrayBuffer = await audioResponse.arrayBuffer();
-                    const audioContext = new AudioContext();
+                    const audioContext = getAudioContext();
                     audioBufferRef.current = await audioContext.decodeAudioData(audioArrayBuffer);
                   } catch (error) {
                     console.warn('Failed to preload audio file:', error);
@@ -559,7 +615,7 @@ export default function ClaimBoxes() {
                   const numChannels = audioBuffer.numberOfChannels;
                   const sampleRate = audioBuffer.sampleRate;
 
-                  const processedAudioBuffer = new AudioContext().createBuffer(
+                  const processedAudioBuffer = getAudioContext().createBuffer(
                     numChannels,
                     audioFrameCount,
                     sampleRate,
@@ -636,11 +692,10 @@ export default function ClaimBoxes() {
         };
 
         // 使用 requestAnimationFrame 同步绘制
-        let animationFrameId: number;
         const renderLoop = () => {
           drawFrame();
           if (recorder.state === 'recording') {
-            animationFrameId = requestAnimationFrame(renderLoop);
+            renderLoopIdRef.current = requestAnimationFrame(renderLoop);
           }
         };
         renderLoop();
@@ -648,7 +703,10 @@ export default function ClaimBoxes() {
         // 录制整段流程：前面的视频 + 6.5s 后的数字动画，这里简单录制 9 秒
         setTimeout(() => {
           if (recorder.state !== 'inactive') {
-            cancelAnimationFrame(animationFrameId);
+            if (renderLoopIdRef.current !== null) {
+              cancelAnimationFrame(renderLoopIdRef.current);
+              renderLoopIdRef.current = null;
+            }
             recorder.stop();
           }
         }, 13000);
@@ -739,7 +797,7 @@ export default function ClaimBoxes() {
         try {
           const audioResponse = await fetch('/video/PE93NhltTYob96tF.mp3');
           const audioArrayBuffer = await audioResponse.arrayBuffer();
-          const audioContext = new AudioContext();
+          const audioContext = getAudioContext();
           audioBuffer = await audioContext.decodeAudioData(audioArrayBuffer);
           audioBufferRef.current = audioBuffer;
         } catch (error) {
@@ -784,6 +842,9 @@ export default function ClaimBoxes() {
       }
 
       const videoDuration = videoMetadata!.duration;
+
+      // 在性能检测前等待一下，确保之前的资源已经清理
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
       // 在开始合并/编码前进行设备性能检测（轻量）
       try {
@@ -876,6 +937,14 @@ export default function ClaimBoxes() {
         await new Promise((resolve) => setTimeout(resolve, 300));
         setIsConverting(false);
         setTimeout(() => setDownloadProgress(0), 200);
+
+        // 强制清理大对象引用，帮助垃圾回收
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        if (!processedVideoBlobRef.current) {
+          recordedChunksRef.current = [];
+          recordedBlobRef.current = null;
+        }
+
         return;
       }
 
@@ -911,7 +980,7 @@ export default function ClaimBoxes() {
           const audioFrameCount = Math.round(targetDuration * audioBuffer.sampleRate);
           const numChannels = audioBuffer.numberOfChannels;
           const sampleRate = audioBuffer.sampleRate;
-          audioContext = new AudioContext();
+          audioContext = getAudioContext();
           processedAudioBuffer = audioContext.createBuffer(
             numChannels,
             audioFrameCount,
@@ -1224,6 +1293,15 @@ export default function ClaimBoxes() {
         await new Promise((resolve) => setTimeout(resolve, 300));
         setIsConverting(false);
         setTimeout(() => setDownloadProgress(0), 200);
+
+        // 强制清理大对象引用，帮助垃圾回收
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        if (!processedVideoBlobRef.current) {
+          // 只有在没有缓存视频的情况下才清理这些引用
+          recordedChunksRef.current = [];
+          recordedBlobRef.current = null;
+        }
+
         return; // 成功完成，直接返回
       } catch (error) {
         console.warn('Audio merge failed, falling back to video-only download:', error);
@@ -1349,6 +1427,13 @@ export default function ClaimBoxes() {
           await new Promise((resolve) => setTimeout(resolve, 300));
           setIsConverting(false);
           setTimeout(() => setDownloadProgress(0), 200);
+
+          // 强制清理大对象引用，帮助垃圾回收
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          if (!processedVideoBlobRef.current) {
+            recordedChunksRef.current = [];
+            recordedBlobRef.current = null;
+          }
         } catch (fallbackError) {
           console.error('Fallback video conversion also failed:', fallbackError);
           // 清理资源
