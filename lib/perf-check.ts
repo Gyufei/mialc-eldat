@@ -19,6 +19,11 @@ export type PerfCheckResult = {
     powerEfficient?: boolean;
   } | null;
   rafFps?: number;
+  // 新增：JS 堆与事件循环指标（跨浏览器可选）
+  jsHeapUsed?: number;
+  jsHeapLimit?: number;
+  jsHeapRatio?: number; // used / limit
+  eventLoopLagMs?: number; // 平均滞后（毫秒）
   score: number; // 0-100 越高越好
   risk: 'low' | 'medium' | 'high';
   details: string[]; // 供页面展示的说明
@@ -52,6 +57,33 @@ async function measureRafFps(durationMs: number): Promise<number> {
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
+  });
+}
+
+// 事件循环滞后：定期采样 setTimeout 与预期触发时间差的平均值
+async function measureEventLoopLag(durationMs = 600, intervalMs = 50): Promise<number> {
+  return new Promise((resolve) => {
+    const start = performance.now();
+    let samples = 0;
+    let totalLag = 0;
+    let expected = start + intervalMs;
+
+    const tick = () => {
+      const now = performance.now();
+      const lag = Math.max(0, now - expected);
+      totalLag += lag;
+      samples++;
+      expected += intervalMs;
+
+      if (now - start >= durationMs) {
+        const avgLag = samples > 0 ? totalLag / samples : 0;
+        resolve(avgLag);
+      } else {
+        setTimeout(tick, intervalMs);
+      }
+    };
+
+    setTimeout(tick, intervalMs);
   });
 }
 
@@ -130,10 +162,11 @@ export async function assessDevicePerformance(options: PerfCheckOptions): Promis
     typeof VideoFrame !== 'undefined' &&
     typeof AudioEncoder !== 'undefined';
 
-  const [rafFps, videoEncoderSupported, mediaEncodingInfo] = await Promise.all([
+  const [rafFps, videoEncoderSupported, mediaEncodingInfo, eventLoopLagMs] = await Promise.all([
     measureRafFps(testDurationMs).catch(() => undefined),
     checkVideoEncoderSupport(targetWidth, targetHeight, frameRate).catch(() => undefined),
     checkMediaCapabilitiesEncoding(targetWidth, targetHeight, frameRate).catch(() => null),
+    measureEventLoopLag(testDurationMs).catch(() => undefined),
   ]);
 
   if (hardwareConcurrency !== undefined) details.push(`CPU threads: ${hardwareConcurrency}`);
@@ -142,11 +175,37 @@ export async function assessDevicePerformance(options: PerfCheckOptions): Promis
   if (videoEncoderSupported !== undefined)
     details.push(`VideoEncoder config supported: ${videoEncoderSupported ? 'Yes' : 'No'}`);
   if (rafFps !== undefined) details.push(`rAF estimated FPS: ${rafFps.toFixed(1)}`);
+  if (eventLoopLagMs !== undefined) details.push(`Event loop lag (avg): ${Math.round(eventLoopLagMs)} ms`);
   if (mediaEncodingInfo) {
     const { supported, smooth, powerEfficient } = mediaEncodingInfo;
     details.push(
       `MediaCapabilities: supported=${supported ?? 'unknown'}, smooth=${smooth ?? 'unknown'}, powerEfficient=${powerEfficient ?? 'unknown'}`,
     );
+  }
+
+  // JS 堆信息（仅部分浏览器提供，如 Chromium）
+  let jsHeapUsed: number | undefined;
+  let jsHeapLimit: number | undefined;
+  let jsHeapRatio: number | undefined;
+  try {
+    const perfWithMemory = performance as Performance & {
+      memory?: { jsHeapSizeLimit: number; totalJSHeapSize: number; usedJSHeapSize: number };
+    };
+    if (perfWithMemory.memory) {
+      jsHeapUsed = perfWithMemory.memory.usedJSHeapSize;
+      jsHeapLimit = perfWithMemory.memory.jsHeapSizeLimit;
+      if (jsHeapUsed && jsHeapLimit && jsHeapLimit > 0) {
+        jsHeapRatio = jsHeapUsed / jsHeapLimit;
+      }
+    }
+  } catch {
+    // 忽略不可用异常
+  }
+  if (jsHeapRatio !== undefined) {
+    const pct = Math.round(jsHeapRatio * 100);
+    const usedMb = jsHeapUsed ? Math.round(jsHeapUsed / (1024 * 1024)) : 'unknown';
+    const limitMb = jsHeapLimit ? Math.round(jsHeapLimit / (1024 * 1024)) : 'unknown';
+    details.push(`JS heap usage: ${pct}% (used ${usedMb}MB / limit ${limitMb}MB)`);
   }
 
   // 简单双权重评分（0-100）
@@ -179,9 +238,11 @@ export async function assessDevicePerformance(options: PerfCheckOptions): Promis
   const weakMem = !!deviceMemory && deviceMemory < 4;
   const noWebCodecs = !webCodecsAvailable;
   const notSmooth = mediaEncodingInfo?.smooth === false;
+  const highLag = !!eventLoopLagMs && eventLoopLagMs >= 50;
+  const highHeap = !!jsHeapRatio && jsHeapRatio >= 0.9;
 
-  if (score >= 70 && !lowFps && !weakCpu && !weakMem && !notSmooth && !noWebCodecs) risk = 'low';
-  if (score < 40 || lowFps || weakCpu || noWebCodecs) risk = 'high';
+  if (score >= 70 && !lowFps && !weakCpu && !weakMem && !notSmooth && !noWebCodecs && !highLag && !highHeap) risk = 'low';
+  if (score < 40 || lowFps || weakCpu || noWebCodecs || highLag || highHeap) risk = 'high';
 
   return {
     hardwareConcurrency,
@@ -190,6 +251,10 @@ export async function assessDevicePerformance(options: PerfCheckOptions): Promis
     videoEncoderSupported,
     mediaEncodingInfo,
     rafFps,
+    jsHeapUsed,
+    jsHeapLimit,
+    jsHeapRatio,
+    eventLoopLagMs,
     score,
     risk,
     details,
@@ -201,6 +266,9 @@ export type DiscourageThresholds = {
   minDeviceMemoryGb: number;
   minRafFps: number;
   requireSmoothEncoding: boolean;
+  // 新增：事件循环滞后与堆使用率阈值
+  maxEventLoopLagMs?: number;
+  maxHeapUsageRatio?: number;
 };
 
 export function shouldDiscourageDownload(
@@ -212,6 +280,8 @@ export function shouldDiscourageDownload(
     minDeviceMemoryGb: 4,
     minRafFps: 30,
     requireSmoothEncoding: true,
+    maxEventLoopLagMs: 50,
+    maxHeapUsageRatio: 0.9,
     ...thresholds,
   };
 
@@ -224,6 +294,14 @@ export function shouldDiscourageDownload(
   const memOk = result.deviceMemory === undefined || result.deviceMemory >= t.minDeviceMemoryGb;
   const fpsOk = result.rafFps === undefined || result.rafFps >= t.minRafFps;
   const smoothOk = !t.requireSmoothEncoding || result.mediaEncodingInfo?.smooth !== false;
+  const lagOk =
+    result.eventLoopLagMs === undefined ||
+    t.maxEventLoopLagMs === undefined ||
+    result.eventLoopLagMs <= t.maxEventLoopLagMs;
+  const heapOk =
+    result.jsHeapRatio === undefined ||
+    t.maxHeapUsageRatio === undefined ||
+    result.jsHeapRatio <= t.maxHeapUsageRatio;
 
-  return !(hcOk && memOk && fpsOk && smoothOk);
+  return !(hcOk && memOk && fpsOk && smoothOk && lagOk && heapOk);
 }
