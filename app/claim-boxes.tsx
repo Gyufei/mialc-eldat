@@ -48,6 +48,56 @@ import SeasonBox from './season-box';
 const CURRENT_SEASON = 1;
 
 /**
+ * 类型守卫：检查对象是否有 close 方法
+ */
+function hasCloseMethod(obj: unknown): obj is { close: () => void } {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'close' in obj &&
+    typeof (obj as { close?: unknown }).close === 'function'
+  );
+}
+
+/**
+ * 类型守卫：检查对象是否有 cancel 方法
+ */
+function hasCancelMethod(obj: unknown): obj is { cancel: () => Promise<void> } {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'cancel' in obj &&
+    typeof (obj as { cancel?: unknown }).cancel === 'function'
+  );
+}
+
+/**
+ * 安全地关闭 MediaInput 资源
+ */
+function safeCloseInput(input: unknown): void {
+  if (hasCloseMethod(input)) {
+    try {
+      input.close();
+    } catch (_e) {
+      // 忽略清理错误
+    }
+  }
+}
+
+/**
+ * 安全地取消 Output 资源
+ */
+async function safeCancelOutput(output: unknown): Promise<void> {
+  if (hasCancelMethod(output)) {
+    try {
+      await output.cancel();
+    } catch (_e) {
+      // 忽略清理错误
+    }
+  }
+}
+
+/**
  * 检查浏览器是否支持音频合并所需的 WebCodecs API
  * @returns {boolean} 如果支持所有必需的 API 则返回 true，否则返回 false
  */
@@ -770,20 +820,8 @@ export default function ClaimBoxes() {
         const conversion = await Conversion.init({ input, output });
         if (!conversion.isValid) {
           // 清理资源
-          try {
-            if (input && typeof (input as any).close === 'function') {
-              (input as any).close();
-            }
-          } catch (_e) {
-            // 忽略清理错误
-          }
-          try {
-            if (output && typeof (output as any).cancel === 'function') {
-              await (output as any).cancel();
-            }
-          } catch (_e) {
-            // 忽略清理错误
-          }
+          safeCloseInput(input);
+          await safeCancelOutput(output);
           toast.error('video conversion failed');
           completeProgress();
           await new Promise((resolve) => setTimeout(resolve, 300));
@@ -797,20 +835,8 @@ export default function ClaimBoxes() {
         const { buffer } = bufferTarget;
         if (!buffer) {
           // 清理资源
-          try {
-            if (input && typeof (input as any).close === 'function') {
-              (input as any).close();
-            }
-          } catch (_e) {
-            // 忽略清理错误
-          }
-          try {
-            if (output && typeof (output as any).cancel === 'function') {
-              await (output as any).cancel();
-            }
-          } catch (_e) {
-            // 忽略清理错误
-          }
+          safeCloseInput(input);
+          await safeCancelOutput(output);
           toast.error('video conversion failed');
           completeProgress();
           await new Promise((resolve) => setTimeout(resolve, 300));
@@ -826,20 +852,8 @@ export default function ClaimBoxes() {
         a.click();
         URL.revokeObjectURL(url);
         // 清理资源
-        try {
-          if (input && typeof (input as any).close === 'function') {
-            (input as any).close();
-          }
-        } catch (_e) {
-          // 忽略清理错误
-        }
-        try {
-          if (output && typeof (output as any).cancel === 'function') {
-            await (output as any).cancel();
-          }
-        } catch (_e) {
-          // 忽略清理错误
-        }
+        safeCloseInput(input);
+        await safeCancelOutput(output);
         completeProgress();
         await new Promise((resolve) => setTimeout(resolve, 300));
         setIsConverting(false);
@@ -1154,13 +1168,7 @@ export default function ClaimBoxes() {
           }
         }
         if (muxerOutput) {
-          try {
-            if (typeof (muxerOutput as any).cancel === 'function') {
-              await (muxerOutput as any).cancel();
-            }
-          } catch (_e) {
-            // 忽略清理错误
-          }
+          await safeCancelOutput(muxerOutput);
         }
         if (audioContext && audioContext.state !== 'closed') {
           try {
@@ -1169,15 +1177,7 @@ export default function ClaimBoxes() {
             // 忽略清理错误
           }
         }
-        if (input) {
-          try {
-            if (typeof (input as any).close === 'function') {
-              (input as any).close();
-            }
-          } catch (_e) {
-            // 忽略清理错误
-          }
-        }
+        safeCloseInput(input);
         
         completeProgress();
         await new Promise((resolve) => setTimeout(resolve, 300));
@@ -1235,13 +1235,7 @@ export default function ClaimBoxes() {
           }
         }
         if (muxerOutput) {
-          try {
-            if (typeof (muxerOutput as any).cancel === 'function') {
-              await (muxerOutput as any).cancel();
-            }
-          } catch (_e) {
-            // 忽略清理错误
-          }
+          await safeCancelOutput(muxerOutput);
         }
         if (audioContext && audioContext.state !== 'closed') {
           try {
@@ -1250,15 +1244,7 @@ export default function ClaimBoxes() {
             // 忽略清理错误
           }
         }
-        if (input) {
-          try {
-            if (typeof (input as any).close === 'function') {
-              (input as any).close();
-            }
-          } catch (_e) {
-            // 忽略清理错误
-          }
-        }
+        safeCloseInput(input);
 
         // 回退到只下载视频（不合并音频）
         console.log('Falling back to video-only download');
@@ -1282,20 +1268,8 @@ export default function ClaimBoxes() {
           });
           if (!fallbackConversion.isValid) {
             // 清理资源
-            try {
-              if (fallbackInput && typeof (fallbackInput as any).close === 'function') {
-                (fallbackInput as any).close();
-              }
-            } catch (_e) {
-              // 忽略清理错误
-            }
-            try {
-              if (fallbackOutput && typeof (fallbackOutput as any).cancel === 'function') {
-                await (fallbackOutput as any).cancel();
-              }
-            } catch (_e) {
-              // 忽略清理错误
-            }
+            safeCloseInput(fallbackInput);
+            await safeCancelOutput(fallbackOutput);
             toast.error('video conversion failed');
             completeProgress();
             await new Promise((resolve) => setTimeout(resolve, 300));
@@ -1309,20 +1283,8 @@ export default function ClaimBoxes() {
           const { buffer: fallbackBuffer } = fallbackBufferTarget;
           if (!fallbackBuffer) {
             // 清理资源
-            try {
-              if (fallbackInput && typeof (fallbackInput as any).close === 'function') {
-                (fallbackInput as any).close();
-              }
-            } catch (_e) {
-              // 忽略清理错误
-            }
-            try {
-              if (fallbackOutput && typeof (fallbackOutput as any).cancel === 'function') {
-                await (fallbackOutput as any).cancel();
-              }
-            } catch (_e) {
-              // 忽略清理错误
-            }
+            safeCloseInput(fallbackInput);
+            await safeCancelOutput(fallbackOutput);
             toast.error('video conversion failed');
             completeProgress();
             await new Promise((resolve) => setTimeout(resolve, 300));
@@ -1338,20 +1300,8 @@ export default function ClaimBoxes() {
           fallbackA.click();
           URL.revokeObjectURL(fallbackUrl);
           // 清理资源
-          try {
-            if (fallbackInput && typeof (fallbackInput as any).close === 'function') {
-              (fallbackInput as any).close();
-            }
-          } catch (_e) {
-            // 忽略清理错误
-          }
-          try {
-            if (fallbackOutput && typeof (fallbackOutput as any).cancel === 'function') {
-              await (fallbackOutput as any).cancel();
-            }
-          } catch (_e) {
-            // 忽略清理错误
-          }
+          safeCloseInput(fallbackInput);
+          await safeCancelOutput(fallbackOutput);
           completeProgress();
           await new Promise((resolve) => setTimeout(resolve, 300));
           setIsConverting(false);
@@ -1359,20 +1309,8 @@ export default function ClaimBoxes() {
         } catch (fallbackError) {
           console.error('Fallback video conversion also failed:', fallbackError);
           // 清理资源
-          try {
-            if (fallbackInput && typeof (fallbackInput as any).close === 'function') {
-              (fallbackInput as any).close();
-            }
-          } catch (_e) {
-            // 忽略清理错误
-          }
-          try {
-            if (fallbackOutput && typeof (fallbackOutput as any).cancel === 'function') {
-              await (fallbackOutput as any).cancel();
-            }
-          } catch (_e) {
-            // 忽略清理错误
-          }
+          safeCloseInput(fallbackInput);
+          await safeCancelOutput(fallbackOutput);
           toast.error('video conversion failed');
           completeProgress();
           await new Promise((resolve) => setTimeout(resolve, 300));
