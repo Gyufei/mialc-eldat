@@ -792,8 +792,8 @@ export default function ClaimBoxes() {
           targetHeight: videoMetadata!.height,
           frameRate: 30,
         });
+        console.log('handleDownloadVideo ~ perf:', perf);
         if (shouldDiscourageDownload(perf)) {
-          console.log('handleDownloadVideo ~ perf:', perf);
           // 取消下载并重置进度loading
           if (progressTimerRef.current) {
             clearInterval(progressTimerRef.current);
