@@ -682,26 +682,37 @@ export default function ClaimBoxes() {
       }
 
       // 如果视频元数据不可用，则重新获取
+      let tempVideoForDuration: HTMLVideoElement | null = null;
       if (!videoMetadata) {
         const tempVideoUrl = URL.createObjectURL(blob);
-        const tempVideoForDuration = document.createElement('video');
+        tempVideoForDuration = document.createElement('video');
         tempVideoForDuration.src = tempVideoUrl;
         tempVideoForDuration.muted = true;
 
         await new Promise<void>((resolve, reject) => {
-          tempVideoForDuration.onloadedmetadata = () => {
+          tempVideoForDuration!.onloadedmetadata = () => {
             videoMetadata = {
-              width: tempVideoForDuration.videoWidth,
-              height: tempVideoForDuration.videoHeight,
-              duration: tempVideoForDuration.duration,
+              width: tempVideoForDuration!.videoWidth,
+              height: tempVideoForDuration!.videoHeight,
+              duration: tempVideoForDuration!.duration,
             };
             videoMetadataRef.current = videoMetadata;
             URL.revokeObjectURL(tempVideoUrl);
+            // 清理临时 video 元素
+            tempVideoForDuration!.src = '';
+            tempVideoForDuration!.load();
+            tempVideoForDuration = null;
             resolve();
           };
-          tempVideoForDuration.onerror = () => {
-            reject(new Error('Failed to load video metadata'));
+          tempVideoForDuration!.onerror = () => {
             URL.revokeObjectURL(tempVideoUrl);
+            // 清理临时 video 元素
+            if (tempVideoForDuration) {
+              tempVideoForDuration.src = '';
+              tempVideoForDuration.load();
+              tempVideoForDuration = null;
+            }
+            reject(new Error('Failed to load video metadata'));
           };
         });
       }
@@ -758,6 +769,21 @@ export default function ClaimBoxes() {
         onProgress(0.1); // 开始转换
         const conversion = await Conversion.init({ input, output });
         if (!conversion.isValid) {
+          // 清理资源
+          try {
+            if (input && typeof (input as any).close === 'function') {
+              (input as any).close();
+            }
+          } catch (_e) {
+            // 忽略清理错误
+          }
+          try {
+            if (output && typeof (output as any).cancel === 'function') {
+              await (output as any).cancel();
+            }
+          } catch (_e) {
+            // 忽略清理错误
+          }
           toast.error('video conversion failed');
           completeProgress();
           await new Promise((resolve) => setTimeout(resolve, 300));
@@ -770,6 +796,21 @@ export default function ClaimBoxes() {
         onProgress(0.9); // 转换完成
         const { buffer } = bufferTarget;
         if (!buffer) {
+          // 清理资源
+          try {
+            if (input && typeof (input as any).close === 'function') {
+              (input as any).close();
+            }
+          } catch (_e) {
+            // 忽略清理错误
+          }
+          try {
+            if (output && typeof (output as any).cancel === 'function') {
+              await (output as any).cancel();
+            }
+          } catch (_e) {
+            // 忽略清理错误
+          }
           toast.error('video conversion failed');
           completeProgress();
           await new Promise((resolve) => setTimeout(resolve, 300));
@@ -784,6 +825,21 @@ export default function ClaimBoxes() {
         a.download = randomFileName;
         a.click();
         URL.revokeObjectURL(url);
+        // 清理资源
+        try {
+          if (input && typeof (input as any).close === 'function') {
+            (input as any).close();
+          }
+        } catch (_e) {
+          // 忽略清理错误
+        }
+        try {
+          if (output && typeof (output as any).cancel === 'function') {
+            await (output as any).cancel();
+          }
+        } catch (_e) {
+          // 忽略清理错误
+        }
         completeProgress();
         await new Promise((resolve) => setTimeout(resolve, 300));
         setIsConverting(false);
@@ -802,6 +858,9 @@ export default function ClaimBoxes() {
       let videoElement: HTMLVideoElement | null = null;
       let trackProcessor: MediaStreamTrackProcessor<VideoFrame> | null = null;
       let reader: ReadableStreamDefaultReader<VideoFrame> | null = null;
+      let videoSource: EncodedVideoPacketSource | null = null;
+      let stream: MediaStream | null = null;
+      let audioContext: AudioContext | null = null;
 
       try {
         // 运行时再次检查关键 API 是否可用
@@ -820,7 +879,7 @@ export default function ClaimBoxes() {
           const audioFrameCount = Math.round(targetDuration * audioBuffer.sampleRate);
           const numChannels = audioBuffer.numberOfChannels;
           const sampleRate = audioBuffer.sampleRate;
-          const audioContext = new AudioContext();
+          audioContext = new AudioContext();
           processedAudioBuffer = audioContext.createBuffer(
             numChannels,
             audioFrameCount,
@@ -863,7 +922,7 @@ export default function ClaimBoxes() {
         console.log('Video encoder dimensions:', videoWidth, videoHeight);
 
         // 创建视频编码器源
-        const videoSource = new EncodedVideoPacketSource('avc');
+        videoSource = new EncodedVideoPacketSource('avc');
 
         // 添加视频轨道到 output（必须在 start() 之前）
         muxerOutput.addVideoTrack(videoSource, {
@@ -887,6 +946,9 @@ export default function ClaimBoxes() {
         videoEncoder = new VideoEncoder({
           output: async (chunk, meta) => {
             try {
+              if (!videoSource) {
+                throw new Error('Video source is not initialized');
+              }
               const packet = EncodedPacket.fromEncodedChunk(chunk);
               await videoSource.add(packet, meta);
             } catch (error) {
@@ -953,7 +1015,7 @@ export default function ClaimBoxes() {
         }
 
         // @ts-expect-error - captureStream may not be in TypeScript definitions
-        const stream = videoElement.captureStream();
+        stream = videoElement.captureStream();
         if (!stream) {
           throw new Error('Failed to create video stream');
         }
@@ -1071,9 +1133,52 @@ export default function ClaimBoxes() {
         a.download = randomFileName;
         a.click();
         URL.revokeObjectURL(url);
+        
+        // 清理所有资源
         if (videoUrl) {
           URL.revokeObjectURL(videoUrl);
         }
+        if (videoElement) {
+          videoElement.pause();
+          videoElement.src = '';
+          videoElement.load(); // 重置视频元素
+        }
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+        if (videoSource) {
+          try {
+            videoSource.close();
+          } catch (_e) {
+            // 忽略清理错误
+          }
+        }
+        if (muxerOutput) {
+          try {
+            if (typeof (muxerOutput as any).cancel === 'function') {
+              await (muxerOutput as any).cancel();
+            }
+          } catch (_e) {
+            // 忽略清理错误
+          }
+        }
+        if (audioContext && audioContext.state !== 'closed') {
+          try {
+            await audioContext.close();
+          } catch (_e) {
+            // 忽略清理错误
+          }
+        }
+        if (input) {
+          try {
+            if (typeof (input as any).close === 'function') {
+              (input as any).close();
+            }
+          } catch (_e) {
+            // 忽略清理错误
+          }
+        }
+        
         completeProgress();
         await new Promise((resolve) => setTimeout(resolve, 300));
         setIsConverting(false);
@@ -1103,6 +1208,10 @@ export default function ClaimBoxes() {
         if (videoElement) {
           videoElement.pause();
           videoElement.src = '';
+          videoElement.load(); // 重置视频元素
+        }
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
         }
         if (reader) {
           try {
@@ -1118,16 +1227,50 @@ export default function ClaimBoxes() {
             // 忽略取消的错误
           }
         }
+        if (videoSource) {
+          try {
+            videoSource.close();
+          } catch (_e) {
+            // 忽略清理错误
+          }
+        }
+        if (muxerOutput) {
+          try {
+            if (typeof (muxerOutput as any).cancel === 'function') {
+              await (muxerOutput as any).cancel();
+            }
+          } catch (_e) {
+            // 忽略清理错误
+          }
+        }
+        if (audioContext && audioContext.state !== 'closed') {
+          try {
+            await audioContext.close();
+          } catch (_e) {
+            // 忽略清理错误
+          }
+        }
+        if (input) {
+          try {
+            if (typeof (input as any).close === 'function') {
+              (input as any).close();
+            }
+          } catch (_e) {
+            // 忽略清理错误
+          }
+        }
 
         // 回退到只下载视频（不合并音频）
         console.log('Falling back to video-only download');
+        let fallbackInput: MediaInput | null = null;
+        let fallbackOutput: Output | null = null;
         try {
-          const fallbackInput = new MediaInput({
+          fallbackInput = new MediaInput({
             source: new BlobSource(blob),
             formats: mimeType.startsWith('video/mp4') ? [MP4] : [WEBM],
           } as unknown as ConstructorParameters<typeof MediaInput>[0]);
           const fallbackBufferTarget = new BufferTarget();
-          const fallbackOutput = new Output({
+          fallbackOutput = new Output({
             format: new Mp4OutputFormat(),
             target: fallbackBufferTarget,
           });
@@ -1138,6 +1281,21 @@ export default function ClaimBoxes() {
             output: fallbackOutput,
           });
           if (!fallbackConversion.isValid) {
+            // 清理资源
+            try {
+              if (fallbackInput && typeof (fallbackInput as any).close === 'function') {
+                (fallbackInput as any).close();
+              }
+            } catch (_e) {
+              // 忽略清理错误
+            }
+            try {
+              if (fallbackOutput && typeof (fallbackOutput as any).cancel === 'function') {
+                await (fallbackOutput as any).cancel();
+              }
+            } catch (_e) {
+              // 忽略清理错误
+            }
             toast.error('video conversion failed');
             completeProgress();
             await new Promise((resolve) => setTimeout(resolve, 300));
@@ -1150,6 +1308,21 @@ export default function ClaimBoxes() {
           onProgress(0.9); // 回退转换完成
           const { buffer: fallbackBuffer } = fallbackBufferTarget;
           if (!fallbackBuffer) {
+            // 清理资源
+            try {
+              if (fallbackInput && typeof (fallbackInput as any).close === 'function') {
+                (fallbackInput as any).close();
+              }
+            } catch (_e) {
+              // 忽略清理错误
+            }
+            try {
+              if (fallbackOutput && typeof (fallbackOutput as any).cancel === 'function') {
+                await (fallbackOutput as any).cancel();
+              }
+            } catch (_e) {
+              // 忽略清理错误
+            }
             toast.error('video conversion failed');
             completeProgress();
             await new Promise((resolve) => setTimeout(resolve, 300));
@@ -1164,12 +1337,42 @@ export default function ClaimBoxes() {
           fallbackA.download = randomFileName;
           fallbackA.click();
           URL.revokeObjectURL(fallbackUrl);
+          // 清理资源
+          try {
+            if (fallbackInput && typeof (fallbackInput as any).close === 'function') {
+              (fallbackInput as any).close();
+            }
+          } catch (_e) {
+            // 忽略清理错误
+          }
+          try {
+            if (fallbackOutput && typeof (fallbackOutput as any).cancel === 'function') {
+              await (fallbackOutput as any).cancel();
+            }
+          } catch (_e) {
+            // 忽略清理错误
+          }
           completeProgress();
           await new Promise((resolve) => setTimeout(resolve, 300));
           setIsConverting(false);
           setTimeout(() => setDownloadProgress(0), 200);
         } catch (fallbackError) {
           console.error('Fallback video conversion also failed:', fallbackError);
+          // 清理资源
+          try {
+            if (fallbackInput && typeof (fallbackInput as any).close === 'function') {
+              (fallbackInput as any).close();
+            }
+          } catch (_e) {
+            // 忽略清理错误
+          }
+          try {
+            if (fallbackOutput && typeof (fallbackOutput as any).cancel === 'function') {
+              await (fallbackOutput as any).cancel();
+            }
+          } catch (_e) {
+            // 忽略清理错误
+          }
           toast.error('video conversion failed');
           completeProgress();
           await new Promise((resolve) => setTimeout(resolve, 300));
