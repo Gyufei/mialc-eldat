@@ -7,8 +7,8 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 
 import { AirDropBox } from '@/lib/use-airdrop';
-import { cn, formatNumber } from '@/lib/utils';
 import { useIsMobile } from '@/lib/use-is-mobile';
+import { cn, formatNumber } from '@/lib/utils';
 
 export type MysteryBoxProps = {
   index: number;
@@ -40,7 +40,8 @@ export function MysteryBox({
     onOpen?.(boxData.uuid);
   }
 
-  function handleClickBtn() {
+  function handleClickBtn(e: React.MouseEvent<HTMLDivElement>) {
+    e.stopPropagation();
     if (isOpened) {
       onReplay?.(boxData.uuid);
     } else {
@@ -117,7 +118,7 @@ export function MysteryBox({
             <div
               className={cn(
                 'absolute inset-0 flex items-center justify-center flex-col gap-1 z-10',
-                !isCanOpen && !isOpened && 'blur'
+                !isCanOpen && !isOpened && 'blur',
               )}
             >
               <p className="font-inter text-2xl leading-none font-medium text-center">
@@ -144,7 +145,7 @@ export function MysteryBox({
           </p>
 
           <div
-            onClick={handleClickBtn}
+            onClick={(e) => handleClickBtn(e)}
             className="text-primary flex items-center gap-2 text-base font-medium justify-start h-auto px-3 py-2 group-hover:underline group-hover:text-secondary transition-all duration-200"
           >
             {isCanOpen ? (
