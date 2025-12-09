@@ -2,34 +2,22 @@ import { usePrivy } from '@privy-io/react-auth';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { motion } from 'framer-motion';
 import { Download, Loader } from 'lucide-react';
-import {
-  BlobSource,
-  BufferTarget,
-  Conversion,
-  EncodedAudioPacketSource,
-  EncodedPacket,
-  EncodedVideoPacketSource,
-  MP4,
-  Input as MediaInput,
-  Mp4OutputFormat,
-  Output,
-  WEBM,
-} from 'mediabunny';
+import { BlobSource, BufferTarget, Conversion, EncodedAudioPacketSource, EncodedPacket, EncodedVideoPacketSource, MP4, Input as MediaInput, Mp4OutputFormat, Output, WEBM } from 'mediabunny';
 import { toast } from 'sonner';
+
+
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+
+
 import { Button } from '@/components/ui/button';
-import {
-  Carousel,
-  CarouselApi,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from '@/components/ui/carousel';
+import { Carousel, CarouselApi, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
+
+
+import { assessDevicePerformance, shouldDiscourageDownload } from '@/lib/perf-check';
 import useAirdrop, { AirDropBox, AirDropData } from '@/lib/use-airdrop';
 import { useClaim } from '@/lib/use-claim';
 import { useIsMobile } from '@/lib/use-is-mobile';
@@ -499,7 +487,7 @@ export default function ClaimBoxes() {
                   const processedAudioBuffer = new AudioContext().createBuffer(
                     numChannels,
                     audioFrameCount,
-                    sampleRate
+                    sampleRate,
                   );
 
                   // 复制音频数据（如果音频比视频短，则循环填充；如果长，则截取）
@@ -558,7 +546,7 @@ export default function ClaimBoxes() {
                 // PC端：需要缩放以适应 1920x1080
                 const scale = Math.max(
                   RECORDING_WIDTH / sourceWidth,
-                  RECORDING_HEIGHT / sourceHeight
+                  RECORDING_HEIGHT / sourceHeight,
                 );
                 const scaledWidth = sourceWidth * scale;
                 const scaledHeight = sourceHeight * scale;
@@ -595,7 +583,7 @@ export default function ClaimBoxes() {
         toast.error('error when recording video');
       }
     },
-    [isMobile]
+    [isMobile],
   );
 
   const handleDownloadVideo = async () => {
@@ -662,6 +650,24 @@ export default function ClaimBoxes() {
 
       const videoDuration = videoMetadata!.duration;
 
+      // 在开始合并/编码前进行设备性能检测（轻量）
+      try {
+        const perf = await assessDevicePerformance({
+          targetWidth: videoMetadata!.width,
+          targetHeight: videoMetadata!.height,
+          frameRate: 30,
+        });
+        if (shouldDiscourageDownload(perf)) {
+          setIsConverting(false);
+          toast.warning(
+            'Page performance is insufficient. Please close high‑load tabs or applications and try downloading again.',
+          );
+          return;
+        }
+      } catch (err) {
+        console.warn('性能检测失败，继续下载流程', err);
+      }
+
       // 创建输入（支持 MP4 和 WebM）
       const inputFormats = mimeType.startsWith('video/mp4') ? [MP4] : [WEBM];
       const inputOptions = {
@@ -721,7 +727,11 @@ export default function ClaimBoxes() {
 
       try {
         // 运行时再次检查关键 API 是否可用
-        if (typeof VideoEncoder === 'undefined' || typeof AudioEncoder === 'undefined' || typeof AudioData === 'undefined') {
+        if (
+          typeof VideoEncoder === 'undefined' ||
+          typeof AudioEncoder === 'undefined' ||
+          typeof AudioData === 'undefined'
+        ) {
           throw new Error('WebCodecs API not available');
         }
 
@@ -740,7 +750,7 @@ export default function ClaimBoxes() {
           const processedAudioBuffer = new AudioContext().createBuffer(
             numChannels,
             audioFrameCount,
-            sampleRate
+            sampleRate,
           );
 
           const sourceFrameCount = audioBuffer.length;
@@ -915,7 +925,9 @@ export default function ClaimBoxes() {
           throw new Error('MediaStreamTrackProcessor is not available');
         }
 
-        trackProcessor = new MediaStreamTrackProcessor({ track: videoTrack }) as unknown as MediaStreamTrackProcessor<VideoFrame>;
+        trackProcessor = new MediaStreamTrackProcessor({
+          track: videoTrack,
+        }) as unknown as MediaStreamTrackProcessor<VideoFrame>;
         reader = trackProcessor.readable.getReader();
 
         // 处理视频帧
@@ -1054,7 +1066,7 @@ export default function ClaimBoxes() {
         return; // 成功完成，直接返回
       } catch (error) {
         console.warn('Audio merge failed, falling back to video-only download:', error);
-        
+
         // 清理资源
         try {
           if (videoEncoder && videoEncoder.state !== 'closed') {
@@ -1105,7 +1117,10 @@ export default function ClaimBoxes() {
             target: fallbackBufferTarget,
           });
 
-          const fallbackConversion = await Conversion.init({ input: fallbackInput, output: fallbackOutput });
+          const fallbackConversion = await Conversion.init({
+            input: fallbackInput,
+            output: fallbackOutput,
+          });
           if (!fallbackConversion.isValid) {
             toast.error('video conversion failed');
             setIsConverting(false);
@@ -1134,9 +1149,9 @@ export default function ClaimBoxes() {
       } finally {
         setIsConverting(false);
       }
-      } finally {
-        setIsConverting(false);
-      }
+    } finally {
+      setIsConverting(false);
+    }
   };
 
   const handleOpenBox = (boxId: string) => {
