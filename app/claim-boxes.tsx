@@ -242,6 +242,7 @@ export default function ClaimBoxes() {
   const recordedChunksRef = useRef<BlobPart[]>([]);
   const recordedBlobRef = useRef<Blob | null>(null);
   const recordedMimeTypeRef = useRef<string>('');
+  const processedVideoBlobRef = useRef<Blob | null>(null); // 缓存处理后的最终视频 blob
   const [videoElementForCanvas, setVideoElementForCanvas] = useState<HTMLVideoElement | null>(null);
 
   // 音频预处理相关（前置优化）
@@ -333,6 +334,7 @@ export default function ClaimBoxes() {
     recordedChunksRef.current = [];
     recordedBlobRef.current = null;
     recordedMimeTypeRef.current = '';
+    processedVideoBlobRef.current = null; // 清理缓存的处理后的视频
 
     if (videoRef.current) {
       videoRef.current.pause();
@@ -673,6 +675,20 @@ export default function ClaimBoxes() {
       return;
     }
 
+    // 如果已经有处理后的视频缓存，直接使用
+    if (processedVideoBlobRef.current) {
+      const randomFileName = `${Math.floor(Math.random() * 1e10)
+        .toString()
+        .padStart(10, '0')}.mp4`;
+      const url = URL.createObjectURL(processedVideoBlobRef.current);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = randomFileName;
+      a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+
     const blob = recordedBlobRef.current;
     if (!blob) {
       toast.error('video generation failed');
@@ -845,6 +861,8 @@ export default function ClaimBoxes() {
           return;
         }
         const mp4Blob = new Blob([buffer], { type: 'video/mp4' });
+        // 保存处理后的视频到缓存
+        processedVideoBlobRef.current = mp4Blob;
         const url = URL.createObjectURL(mp4Blob);
         const a = document.createElement('a');
         a.href = url;
@@ -1162,6 +1180,8 @@ export default function ClaimBoxes() {
         }
 
         const mp4Blob = new Blob([finalBuffer], { type: 'video/mp4' });
+        // 保存处理后的视频到缓存
+        processedVideoBlobRef.current = mp4Blob;
         const url = URL.createObjectURL(mp4Blob);
         const a = document.createElement('a');
         a.href = url;
@@ -1314,6 +1334,8 @@ export default function ClaimBoxes() {
             return;
           }
           const fallbackMp4Blob = new Blob([fallbackBuffer], { type: 'video/mp4' });
+          // 保存处理后的视频到缓存
+          processedVideoBlobRef.current = fallbackMp4Blob;
           const fallbackUrl = URL.createObjectURL(fallbackMp4Blob);
           const fallbackA = document.createElement('a');
           fallbackA.href = fallbackUrl;
@@ -1559,7 +1581,7 @@ export default function ClaimBoxes() {
                   </Button>
                   <Button
                     onClick={handleDownloadVideo}
-                    disabled={isMobile ? false : !recordedBlobRef.current}
+                    disabled={isMobile ? false : !recordedBlobRef.current && !processedVideoBlobRef.current}
                     className="bg-black px-2 hover:bg-black/80 text-white flex-1 sm:w-50 w-[260px] flex flex-row gap-2 items-center relative overflow-hidden"
                     style={{
                       background:
