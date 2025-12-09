@@ -67,16 +67,28 @@ export default function CanvasAnimation({
 
     let currentWidth = 0;
     let currentHeight = 0;
+    let lastObservedWidth = 0;
+    let lastObservedHeight = 0;
 
     const updateCanvasSize = () => {
       const rect = container.getBoundingClientRect();
       const isMobileNow = window.innerWidth < 768;
-      currentWidth = isMobileNow ? window.innerWidth : rect.width;
-      currentHeight = rect.height;
+      const newWidth = isMobileNow ? window.innerWidth : rect.width;
+      const newHeight = rect.height;
 
-      if (currentWidth === 0 || currentHeight === 0) {
+      if (newWidth === 0 || newHeight === 0) {
         return;
       }
+
+      // 只有当尺寸真正发生变化时才更新，避免不必要的重绘和可能的循环触发
+      if (newWidth === lastObservedWidth && newHeight === lastObservedHeight) {
+        return;
+      }
+
+      lastObservedWidth = newWidth;
+      lastObservedHeight = newHeight;
+      currentWidth = newWidth;
+      currentHeight = newHeight;
 
       const dpr = window.devicePixelRatio || 1;
       canvas.width = currentWidth * dpr;
@@ -183,7 +195,7 @@ export default function CanvasAnimation({
       const isMobileNow = window.innerWidth < 768;
       const baseSize = Math.min(currentWidth, currentHeight);
       const amountFontSize = isMobileNow ? 48 : baseSize * 0.22;
-      const labelFontSize = baseSize * 0.125 * 0.75;
+      const labelFontSize = baseSize * 0.125 * (tokenName === 'MON' ? 0.66 : 0.7);
 
       ctx.font = `800 ${amountFontSize}px 'Britti Sans', 'Inter', sans-serif`;
       const textMetrics = ctx.measureText(displayText);
@@ -231,7 +243,9 @@ export default function CanvasAnimation({
       // 移动端：tokenName 与 amount 使用同样的中心偏移；桌面端保留原逻辑靠右
       const labelX = isMobileNow
         ? currentWidth / 2 + currentWidth * MOBILE_TEXT_CENTER_OFFSET_RATIO
-        : currentWidth * 0.92;
+        : tokenName === 'MON'
+          ? currentWidth * 0.93
+          : currentWidth * 0.91;
       ctx.textAlign = isMobileNow ? 'center' : 'right';
       ctx.textBaseline = 'bottom';
       ctx.strokeText(`$${tokenName}`, labelX, labelBaselineY);
@@ -246,9 +260,21 @@ export default function CanvasAnimation({
 
     animationFrameId = requestAnimationFrame(render);
 
+    // 使用防抖来避免频繁触发
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
     const resizeObserver = new ResizeObserver(() => {
-      updateCanvasSize();
-      requestAnimationFrame(render);
+      // 清除之前的定时器
+      if (resizeTimer) {
+        clearTimeout(resizeTimer);
+      }
+
+      // 使用防抖，避免在短时间内多次触发
+      // 同时让 updateCanvasSize 内部的尺寸检查来处理是否真的需要更新
+      resizeTimer = setTimeout(() => {
+        updateCanvasSize();
+        requestAnimationFrame(render);
+        resizeTimer = null;
+      }, 16); // 约一帧的时间
     });
 
     resizeObserver.observe(container);
@@ -262,6 +288,10 @@ export default function CanvasAnimation({
 
     return () => {
       cancelAnimationFrame(animationFrameId);
+      if (resizeTimer) {
+        clearTimeout(resizeTimer);
+        resizeTimer = null;
+      }
       resizeObserver.disconnect();
       window.removeEventListener('resize', handleWindowResize);
       // 卸载时通知外部 canvas 已失效

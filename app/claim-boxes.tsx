@@ -2,20 +2,33 @@ import { usePrivy } from '@privy-io/react-auth';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { motion } from 'framer-motion';
 import { Download, Loader } from 'lucide-react';
-import { BlobSource, BufferTarget, Conversion, EncodedAudioPacketSource, EncodedPacket, EncodedVideoPacketSource, MP4, Input as MediaInput, Mp4OutputFormat, Output, WEBM } from 'mediabunny';
+import {
+  BlobSource,
+  BufferTarget,
+  Conversion,
+  EncodedAudioPacketSource,
+  EncodedPacket,
+  EncodedVideoPacketSource,
+  MP4,
+  Input as MediaInput,
+  Mp4OutputFormat,
+  Output,
+  WEBM,
+} from 'mediabunny';
 import { toast } from 'sonner';
-
-
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-
-
 import { Button } from '@/components/ui/button';
-import { Carousel, CarouselApi, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import {
+  Carousel,
+  CarouselApi,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from '@/components/ui/carousel';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-
-
 
 import { assessDevicePerformance, shouldDiscourageDownload } from '@/lib/perf-check';
 import useAirdrop, { AirDropBox, AirDropData } from '@/lib/use-airdrop';
@@ -170,6 +183,8 @@ export default function ClaimBoxes() {
   // 录制相关
   const [isRecording, setIsRecording] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null); // 自动递增进度定时器
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<BlobPart[]>([]);
@@ -249,6 +264,12 @@ export default function ClaimBoxes() {
     setOnOpeningBoxId(null);
     setShowOpBtn(false);
     setIsRecording(false);
+    setDownloadProgress(0);
+    // 清理进度定时器
+    if (progressTimerRef.current) {
+      clearInterval(progressTimerRef.current);
+      progressTimerRef.current = null;
+    }
 
     // 关闭弹窗时停止录制但不触发下载，并清理录制状态
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -587,7 +608,16 @@ export default function ClaimBoxes() {
   );
 
   const handleDownloadVideo = async () => {
-    if (isRecording || isConverting) {
+    // 如果正在下载，阻止重复点击
+    if (isRecording || isConverting || downloadProgress > 0) {
+      return;
+    }
+
+    // 移动端提示用户使用 PC 下载
+    if (isMobile) {
+      toast.warning(
+        'Due to mobile performance limitations, please use a PC browser to download the video.',
+      );
       return;
     }
 
@@ -604,6 +634,66 @@ export default function ClaimBoxes() {
 
     try {
       setIsConverting(true);
+
+      // 清理之前的定时器
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current);
+        progressTimerRef.current = null;
+      }
+
+      // 重置进度为0
+      setDownloadProgress(0);
+      await new Promise((resolve) => setTimeout(resolve, 16)); // 等待UI更新
+
+      // 启动自动递增进度条
+      // 总时间约20秒，最大到95%，增量递减
+      const TARGET_TIME = 20000; // 20秒
+      const MAX_PROGRESS = 95; // 最大进度95%
+      const UPDATE_INTERVAL = 100; // 每100ms更新一次
+      const TOTAL_UPDATES = TARGET_TIME / UPDATE_INTERVAL; // 总共200次更新
+
+      let currentProgress = 0;
+      let updateCount = 0;
+
+      // 计算每次的增量，使用递减算法
+      // 开始时增量大，逐渐变小
+      const getIncrement = (progress: number, remainingUpdates: number) => {
+        // 使用平方根函数使递减更平滑
+        const progressRatio = progress / MAX_PROGRESS;
+        // 剩余进度 / 剩余更新次数，但根据进度比例调整
+        const baseIncrement = (MAX_PROGRESS - progress) / remainingUpdates;
+        // 开始时速度较快，逐渐变慢
+        const speedFactor = 1 - progressRatio * 0.7; // 从1.0递减到0.3
+        return baseIncrement * speedFactor;
+      };
+
+      progressTimerRef.current = setInterval(() => {
+        updateCount++;
+        const remainingUpdates = TOTAL_UPDATES - updateCount;
+
+        if (remainingUpdates <= 0 || currentProgress >= MAX_PROGRESS) {
+          // 达到最大进度或时间到了
+          if (progressTimerRef.current) {
+            clearInterval(progressTimerRef.current);
+            progressTimerRef.current = null;
+          }
+          setDownloadProgress(MAX_PROGRESS);
+          return;
+        }
+
+        const increment = getIncrement(currentProgress, remainingUpdates);
+        currentProgress = Math.min(currentProgress + increment, MAX_PROGRESS);
+        setDownloadProgress(Math.floor(currentProgress));
+      }, UPDATE_INTERVAL);
+
+      // 辅助函数：停止进度并跳到100%
+      const completeProgress = () => {
+        if (progressTimerRef.current) {
+          clearInterval(progressTimerRef.current);
+          progressTimerRef.current = null;
+        }
+        setDownloadProgress(100);
+      };
 
       // 使用预处理的音频数据（如果可用），否则重新加载
       let audioBuffer: AudioBuffer | null = audioBufferRef.current;
@@ -693,14 +783,20 @@ export default function ClaimBoxes() {
         const conversion = await Conversion.init({ input, output });
         if (!conversion.isValid) {
           toast.error('video conversion failed');
+          completeProgress();
+          await new Promise((resolve) => setTimeout(resolve, 300));
           setIsConverting(false);
+          setTimeout(() => setDownloadProgress(0), 200);
           return;
         }
         await conversion.execute();
         const { buffer } = bufferTarget;
         if (!buffer) {
           toast.error('video conversion failed');
+          completeProgress();
+          await new Promise((resolve) => setTimeout(resolve, 300));
           setIsConverting(false);
+          setTimeout(() => setDownloadProgress(0), 200);
           return;
         }
         const mp4Blob = new Blob([buffer], { type: 'video/mp4' });
@@ -710,6 +806,10 @@ export default function ClaimBoxes() {
         a.download = randomFileName;
         a.click();
         URL.revokeObjectURL(url);
+        completeProgress();
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        setIsConverting(false);
+        setTimeout(() => setDownloadProgress(0), 200);
         return;
       }
 
@@ -1063,6 +1163,10 @@ export default function ClaimBoxes() {
         if (videoUrl) {
           URL.revokeObjectURL(videoUrl);
         }
+        completeProgress();
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        setIsConverting(false);
+        setTimeout(() => setDownloadProgress(0), 200);
         return; // 成功完成，直接返回
       } catch (error) {
         console.warn('Audio merge failed, falling back to video-only download:', error);
@@ -1123,14 +1227,20 @@ export default function ClaimBoxes() {
           });
           if (!fallbackConversion.isValid) {
             toast.error('video conversion failed');
+            completeProgress();
+            await new Promise((resolve) => setTimeout(resolve, 300));
             setIsConverting(false);
+            setTimeout(() => setDownloadProgress(0), 200);
             return;
           }
           await fallbackConversion.execute();
           const { buffer: fallbackBuffer } = fallbackBufferTarget;
           if (!fallbackBuffer) {
             toast.error('video conversion failed');
+            completeProgress();
+            await new Promise((resolve) => setTimeout(resolve, 300));
             setIsConverting(false);
+            setTimeout(() => setDownloadProgress(0), 200);
             return;
           }
           const fallbackMp4Blob = new Blob([fallbackBuffer], { type: 'video/mp4' });
@@ -1140,15 +1250,33 @@ export default function ClaimBoxes() {
           fallbackA.download = randomFileName;
           fallbackA.click();
           URL.revokeObjectURL(fallbackUrl);
+          completeProgress();
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          setIsConverting(false);
+          setTimeout(() => setDownloadProgress(0), 200);
         } catch (fallbackError) {
           console.error('Fallback video conversion also failed:', fallbackError);
           toast.error('video conversion failed');
+          completeProgress();
+          await new Promise((resolve) => setTimeout(resolve, 300));
           setIsConverting(false);
+          setTimeout(() => setDownloadProgress(0), 200);
           return;
         }
       } finally {
         setIsConverting(false);
       }
+    } catch (error) {
+      // 处理主 try 块的错误
+      console.error('Download failed:', error);
+      // 停止进度定时器并跳到100%
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current);
+        progressTimerRef.current = null;
+      }
+      setDownloadProgress(100);
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      setTimeout(() => setDownloadProgress(0), 200);
     } finally {
       setIsConverting(false);
     }
@@ -1355,15 +1483,23 @@ export default function ClaimBoxes() {
                   </Button>
                   <Button
                     onClick={handleDownloadVideo}
-                    disabled={isRecording || isConverting || !recordedBlobRef.current}
-                    className="bg-black hover:bg-black/80 text-white flex-1 max-w-45 flex flex-row gap-2 items-center"
+                    disabled={isMobile ? false : !recordedBlobRef.current}
+                    className="bg-black px-2 hover:bg-black/80 text-white flex-1 sm:w-50 w-[260px] flex flex-row gap-2 items-center relative overflow-hidden"
+                    style={{
+                      background:
+                        !isMobile && downloadProgress > 0
+                          ? `linear-gradient(to right, #5F57F2 ${downloadProgress}%, black ${downloadProgress}%)`
+                          : undefined,
+                    }}
                   >
-                    {isRecording || isConverting ? (
-                      <Loader className="size-4 animate-spin" color="#fff" />
+                    {isMobile || (!isRecording && !isConverting) ? (
+                      <Download size="sm" color="#fff" className="size-4 relative z-10" />
                     ) : (
-                      <Download size="sm" color="#fff" className="size-4" />
+                      <Loader className="size-4 animate-spin" color="#fff" />
                     )}
-                    <span>Download Video</span>
+                    <span className="relative z-10">
+                      {isMobile ? 'Use PC to Download' : 'Download Video'}
+                    </span>
                   </Button>
                 </div>
                 <button
