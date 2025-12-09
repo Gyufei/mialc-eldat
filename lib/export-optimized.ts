@@ -16,6 +16,7 @@ import {
   CanvasSource,
   Mp4OutputFormat,
   Output,
+  Quality,
   QUALITY_HIGH,
   QUALITY_LOW,
   QUALITY_MEDIUM,
@@ -24,7 +25,7 @@ import {
 
 export type ExportQuality = 'low' | 'medium' | 'high' | 'very_high';
 
-const qualityMap: Record<ExportQuality, number> = {
+const qualityMap: Record<ExportQuality, Quality> = {
   low: QUALITY_LOW,
   medium: QUALITY_MEDIUM,
   high: QUALITY_HIGH,
@@ -117,11 +118,6 @@ export async function exportWithCanvasSource(
     let audioSource: AudioBufferSource | null = null;
     if (audioBuffer) {
       onProgress?.(0.05); // 5% 用于音频处理
-
-      const processedAudioBuffer = await createAudioBufferForDuration(
-        audioBuffer,
-        duration,
-      );
 
       audioSource = new AudioBufferSource({
         codec: 'aac',
