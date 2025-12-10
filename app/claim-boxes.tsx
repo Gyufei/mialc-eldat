@@ -32,7 +32,11 @@ import {
 } from '@/components/ui/carousel';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
-import { assessDevicePerformance, shouldDiscourageDownload } from '@/lib/perf-check';
+import {
+  assessDevicePerformance,
+  shouldDiscourageDownload,
+  shouldHardBlockDownload,
+} from '@/lib/perf-check';
 import useAirdrop, { AirDropBox, AirDropData } from '@/lib/use-airdrop';
 import { useClaim } from '@/lib/use-claim';
 import { useIsMobile } from '@/lib/use-is-mobile';
@@ -854,7 +858,34 @@ export default function ClaimBoxes() {
           frameRate: 30,
         });
         console.log('handleDownloadVideo ~ perf:', perf);
-        if (shouldDiscourageDownload(perf)) {
+
+        // 1) 硬件视频编码不支持；或 2) 设备内存 ≤ 8GB
+        // 直接阻止下载并提示
+        if (shouldHardBlockDownload(perf)) {
+          if (progressTimerRef.current) {
+            clearInterval(progressTimerRef.current);
+            progressTimerRef.current = null;
+          }
+          setDownloadProgress(0);
+          setIsConverting(false);
+          toast.warning(
+            'This device does not support video download. Please try on a higher-performance device.',
+          );
+          return;
+        }
+
+        // 根据分辨率动态调整“软拦截”的并发阈值：
+        // 高于 720p(>921600 像素)则需要 >=8 线程，否则 >=4 线程
+        const pixelCount = videoMetadata!.width * videoMetadata!.height;
+        const isHighRes = pixelCount > 921600;
+        const discourageThresholds = {
+          minHardwareConcurrency: isHighRes ? 8 : 4,
+          minDeviceMemoryGb: 4,
+          minRafFps: 40,
+          requireSmoothEncoding: true,
+        } as const;
+
+        if (shouldDiscourageDownload(perf, discourageThresholds)) {
           // 取消下载并重置进度loading
           if (progressTimerRef.current) {
             clearInterval(progressTimerRef.current);
@@ -1257,7 +1288,7 @@ export default function ClaimBoxes() {
         a.download = randomFileName;
         a.click();
         URL.revokeObjectURL(url);
-        
+
         // 清理所有资源
         if (videoUrl) {
           URL.revokeObjectURL(videoUrl);
@@ -1288,7 +1319,7 @@ export default function ClaimBoxes() {
           }
         }
         safeCloseInput(input);
-        
+
         completeProgress();
         await new Promise((resolve) => setTimeout(resolve, 300));
         setIsConverting(false);
@@ -1666,7 +1697,9 @@ export default function ClaimBoxes() {
                   </Button>
                   <Button
                     onClick={handleDownloadVideo}
-                    disabled={isMobile ? false : !recordedBlobRef.current && !processedVideoBlobRef.current}
+                    disabled={
+                      isMobile ? false : !recordedBlobRef.current && !processedVideoBlobRef.current
+                    }
                     className="bg-black px-2 hover:bg-black/80 text-white flex-1 sm:w-50 w-[260px] flex flex-row gap-2 items-center relative overflow-hidden"
                     style={{
                       background:

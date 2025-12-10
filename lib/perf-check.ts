@@ -94,9 +94,13 @@ async function checkVideoEncoderSupport(
 ): Promise<boolean | undefined> {
   if (typeof VideoEncoder === 'undefined') return undefined;
   try {
-    const bitrate = estimateBitrate(width, height, framerate);
+    // 与导出流程保持一致的编码配置：
+    // 分辨率阈值 1280x720（921600）
+    const codecString = width * height > 921600 ? 'avc1.640028' : 'avc1.42001f';
+    // 与页面编码配置一致，使用固定 2Mbps（VideoEncoder 需要 number 类型）
+    const bitrate = 2_000_000;
     const res = await VideoEncoder.isConfigSupported({
-      codec: 'avc1.42E01E', // baseline H.264，兼容性较好
+      codec: codecString,
       width,
       height,
       framerate,
@@ -233,7 +237,7 @@ export async function assessDevicePerformance(options: PerfCheckOptions): Promis
 
   // 根据关键指标判断风险
   let risk: 'low' | 'medium' | 'high' = 'medium';
-  const lowFps = !!rafFps && rafFps < 30;
+  const lowFps = !!rafFps && rafFps < 40;
   const weakCpu = !!hardwareConcurrency && hardwareConcurrency < 4;
   const weakMem = !!deviceMemory && deviceMemory < 4;
   const noWebCodecs = !webCodecsAvailable;
@@ -278,7 +282,7 @@ export function shouldDiscourageDownload(
   const t: DiscourageThresholds = {
     minHardwareConcurrency: 4,
     minDeviceMemoryGb: 4,
-    minRafFps: 30,
+    minRafFps: 40,
     requireSmoothEncoding: true,
     maxEventLoopLagMs: 50,
     maxHeapUsageRatio: 0.9,
@@ -304,4 +308,13 @@ export function shouldDiscourageDownload(
     result.jsHeapRatio <= t.maxHeapUsageRatio;
 
   return !(hcOk && memOk && fpsOk && smoothOk && lagOk && heapOk);
+}
+
+// 更严格的下载拦截：满足任一条件即建议“硬拦截”
+// - 硬件视频编码不支持（videoEncoderSupported === false）
+// - 设备内存报告值 <= 8GB（Device Memory API 的分档值）
+export function shouldHardBlockDownload(result: PerfCheckResult): boolean {
+  const encoderUnsupported = result.videoEncoderSupported === false;
+  const lowMemory = typeof result.deviceMemory === 'number' && result.deviceMemory < 8;
+  return encoderUnsupported || lowMemory;
 }
