@@ -21,6 +21,13 @@
 - `deviceMemory` 与 `performance.memory` 仅在部分浏览器可用（Chromium 支持较好）。不可用时字段为空，评估会自动降级但不会报错。
 - `eventLoopLagMs` 与 `rafFps` 能较好反映“此刻主线程是否过载/掉帧”，与 CPU/Mem 指标结合更可靠。
 
+编码能力检测说明（与实际导出保持一致）：
+- `videoEncoderSupported` 使用与页面真实编码一致的参数进行探测：
+  - `codec`: 高于 720p（像素数 `> 921600`）使用 `avc1.640028`（AVC Level 4.0）；否则使用 `avc1.42001f`（AVC Level 3.1）。
+  - `bitrate`: 固定 `2_000_000`（2 Mbps）。
+  - `width/height`: 使用目标偶数尺寸进行检测。
+- 注意：`chrome://gpu` 的“Video Encode: Hardware accelerated”并不保证某一具体 `codec+profile+level+分辨率+码率` 组合一定支持，故以 WebCodecs 的 `isConfigSupported` 作为准入依据。
+
 ## 评分与风险评估
 `assessDevicePerformance` 返回一个 0-100 的 `score` 与 `risk`（`low` | `medium` | `high`）。当前策略：
 - 评分要点（简单双权重）：
@@ -31,7 +38,7 @@
 - 风险判定：
   - 高风险（`high`）：满足任意条件之一：
     - `score < 40`；
-    - `rafFps < 30`；
+- `rafFps < 40`；
     - `hardwareConcurrency < 4`；
     - `webCodecsAvailable === false`；
     - `eventLoopLagMs ≥ 50`；
@@ -51,7 +58,7 @@
 函数：`shouldDiscourageDownload(result, thresholds?)`，默认阈值：
 - `minHardwareConcurrency: 4`
 - `minDeviceMemoryGb: 4`
-- `minRafFps: 30`
+- `minRafFps: 40`
 - `requireSmoothEncoding: true`（如果 `mediaEncodingInfo.smooth === false` 则视为不满足）
 - `maxEventLoopLagMs: 50`
 - `maxHeapUsageRatio: 0.9`
@@ -81,6 +88,21 @@ const block = shouldDiscourageDownload(perf, {
 });
 ```
 
+页面实际阈值覆盖（当前实现）：
+- 在 `app/claim-boxes.tsx` 中，开启下载前会根据分辨率动态传入并发阈值：
+  - 像素数 `> 921600`（高于 720p，包括 1080p）→ `minHardwareConcurrency = 8`。
+  - 像素数 `≤ 921600`（≤720p）→ `minHardwareConcurrency = 4`。
+- 其他阈值保持默认：`minDeviceMemoryGb = 4`、`minRafFps = 30`、`requireSmoothEncoding = true`。
+
+这属于“软拦截”（提示性能不足并取消本次下载），不会因为并发不足而进行“硬拦截”。
+
+## 硬拦截逻辑（shouldHardBlockDownload）
+函数：`shouldHardBlockDownload(result)`，满足任一条件将直接阻止下载并提示：
+- `videoEncoderSupported === false`（WebCodecs 不支持当前配置）。
+- `deviceMemory < 8`（设备内存报告值低于 8GB）。
+
+硬拦截规则集中在 `lib/perf-check.ts`，页面在下载前统一调用该函数进行严格准入判断。
+
 ## 页面与下载流程中的使用
 - 页面展示：`app/performance-check/page.tsx` 读取 `assessDevicePerformance` 返回的 `details` 与 `risk` 进行展示。
 - 下载流程拦截：`app/claim-boxes.tsx` 在开始下载/转码前调用检测；当 `shouldDiscourageDownload(...)` 返回 `true` 时：
@@ -88,6 +110,10 @@ const block = shouldDiscourageDownload(perf, {
   - 重置进度（`setDownloadProgress(0)`）。
   - 结束“转换中”状态（`setIsConverting(false)`）。
   - 弹出提醒（toast）说明设备当前不适合下载。
+
+导出参数与分辨率说明：
+- PC 端录制固定为 `1920×1080@30fps`，通过离屏 `canvas.captureStream(30)` 实现；页面内容按“cover”缩放以填满 16:9，必要时上下或左右裁剪。
+- 编码时宽高会取偶数；分辨率高于 720p 使用 `avc1.640028`，否则使用 `avc1.42001f`；码率固定 2Mbps。
 
 以上逻辑确保在性能不足时，下载与进度加载都会被取消，避免资源浪费与糟糕体验。
 
@@ -108,4 +134,10 @@ const block = shouldDiscourageDownload(perf, {
 - 记录日志：可在拦截时上报 `risk` 与细节指标，便于后续运营与调整。
 
 ## 变更历史（关键门槛）
-- 2025-12：将低 FPS 与拦截默认阈值从 `40` 下调至 `30`，并新增事件循环滞后（50ms）与 JS 堆占用（90%）纳入高风险判定与拦截。
+- 2025-12（近期）：
+  - 将“硬拦截”规则集中到 `lib/perf-check.ts/shouldHardBlockDownload`，以 `videoEncoderSupported === false` 或 `deviceMemory < 8GB` 为硬拦截条件。
+  - 统一 `checkVideoEncoderSupport` 的编码检测参数，与页面编码保持一致（`avc1.640028`/`avc1.42001f` + `2Mbps`）。
+  - 在页面侧为“软拦截”动态传入并发阈值（高分辨率要求 `≥8`，低分辨率要求 `≥4`）。
+  - 保持默认软拦截阈值不变，并继续将 rAF FPS/事件循环滞后/JS 堆占用纳入综合判断。
+
+- 2025-12：恢复低 FPS 与默认拦截阈值为 `40`（此前曾临时下调至 `30`），继续保留事件循环滞后（50ms）与 JS 堆占用（90%）纳入高风险判定与拦截。
