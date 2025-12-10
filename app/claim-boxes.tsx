@@ -893,9 +893,14 @@ export default function ClaimBoxes() {
           }
           setDownloadProgress(0);
           setIsConverting(false);
-          toast.warning(
-            'Page performance is insufficient. Please close high‑load tabs or applications and try downloading again.',
-          );
+          // 并发不足时，给出更明确的“不支持下载”提示；否则使用性能不足提示
+          const hcOk =
+            perf.hardwareConcurrency === undefined ||
+            perf.hardwareConcurrency >= discourageThresholds.minHardwareConcurrency;
+          const warnMsg = !hcOk
+            ? 'This device does not support video download. Please try on a higher-performance device.'
+            : 'Page performance is insufficient. Please close high‑load tabs or applications and try downloading again.';
+          toast.warning(warnMsg);
           return;
         }
       } catch (err) {
