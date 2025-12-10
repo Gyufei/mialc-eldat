@@ -1634,14 +1634,22 @@ export default function ClaimBoxes() {
         onOpenChange={(opened: boolean) => {
           if (opened) {
             setIsRevealVisible(true);
-          } else {
-            closeReveal();
           }
+          // 移除 else 分支，不允许通过 onOpenChange 关闭弹窗
+          // 只有点击 Continue 按钮时才会关闭
         }}
       >
         <DialogContent
           showCloseButton={false}
           onOpenAutoFocus={(e) => e.preventDefault()}
+          onInteractOutside={(e) => {
+            // 阻止点击外部区域关闭弹窗
+            e.preventDefault();
+          }}
+          onEscapeKeyDown={(e) => {
+            // 阻止按下 ESC 键关闭弹窗
+            e.preventDefault();
+          }}
           className="w-full p-0 border-0 overflow-hidden max-w-[min(calc((100vh-2rem)*390/800),calc(100vw-2rem))] max-h-[calc(100vh-2rem)] aspect-390/800 sm:aspect-video sm:max-w-[min(calc((100vh-2rem)*16/9),calc(100vw-2rem),1920px)] sm:max-h-[calc(100vh-2rem)]"
         >
           <VisuallyHidden>
@@ -1692,7 +1700,7 @@ export default function ClaimBoxes() {
                 <div className="flex gap-2 sm:gap-4">
                   <Button
                     onClick={() => {
-                      const e = encodeURIComponent('Tadle BOXES \uD83C\uDF81');
+                      const e = encodeURIComponent('I just received a testnet airdrop of 100 $TLE from @tadle_com!');
                       window.open('https://twitter.com/intent/tweet?text='.concat(e), '_blank');
                     }}
                     className="bg-black text-white hover:bg-black/80 flex-1 max-w-45 flex flex-row gap-2 items-center"
@@ -1719,7 +1727,13 @@ export default function ClaimBoxes() {
                       <Loader className="size-4 animate-spin" color="#fff" />
                     )}
                     <span className="relative z-10">
-                      {isMobile ? 'Use PC to Download' : 'Download Video'}
+                      {isMobile
+                        ? 'Use PC to Download'
+                        : isRecording
+                          ? 'Preparing video'
+                          : isConverting
+                            ? 'Downloading...'
+                            : 'Download Video'}
                     </span>
                   </Button>
                 </div>
