@@ -58,7 +58,14 @@ export const metadata: Metadata = {
       "Official Tadle airdrop claim. Connect your crypto wallet and web3 social accounts to see if you're eligible for rewards.",
     url: '/',
     siteName: 'Tadle Claim Portal',
-    images: '/opengraph-image.jpg',
+    images: [
+      {
+        url: '/opengraph-image.jpg',
+        width: 1200,
+        height: 630,
+        type: 'image/jpeg',
+      },
+    ],
     type: 'website',
     locale: 'en_US',
   },
