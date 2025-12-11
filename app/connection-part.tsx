@@ -26,10 +26,10 @@ export default function ConnectionPart({
         >
           Connections
         </h3>
-        <p className={cn('text-secondary', size === 'sm' ? 'text-xs leading-5' : 'text-sm')}>
+        {/* <p className={cn('text-secondary', size === 'sm' ? 'text-xs leading-5' : 'text-sm')}>
           Each eligible wallet and account adds to your claim strength. Changes save automatically
           and sync with your profile.
-        </p>
+        </p> */}
       </div>
       <div
         className={cn(
