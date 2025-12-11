@@ -12,15 +12,19 @@ export default function Login({
   isLogging: boolean;
   onLoggingChange: (bool: boolean) => void;
 }) {
-  const titleLine1 = ['Tadle', 'offers', 'insane', 'incentives'];
-  const titleLine2 = ['for', 'every', 'true','contributor'];
+  const titleLines = [
+    ['Tadle', 'offers'],
+    ['insane', 'incentives'],
+    ['for', 'every'],
+    ['true', 'contributor'],
+  ];
   const subtitleWords = ['Connect', 'your', 'accounts', 'to', 'claim', 'your', 'incentives'];
   const wordDuration = 0.4;
   const wordDelay = 0.2;
-  const lastEndTitle1 = (titleLine1.length - 1) * wordDelay + wordDuration;
-  const lastEndTitle2 = (titleLine1.length + titleLine2.length - 1) * wordDelay + wordDuration;
+  const totalTitleWords = titleLines.reduce((sum, line) => sum + line.length, 0);
+  const lastEndTitle = (totalTitleWords - 1) * wordDelay + wordDuration;
   const lastEndSubtitle = (subtitleWords.length - 1) * wordDelay + wordDuration;
-  const buttonDelay = Math.max(lastEndTitle1, lastEndTitle2, lastEndSubtitle) + 0.2;
+  const buttonDelay = Math.max(lastEndTitle, lastEndSubtitle) + 0.2;
 
   const { authenticated } = usePrivy();
   const { login } = useLogin();
@@ -138,37 +142,30 @@ export default function Login({
           </span>
         </div>
         <h1 className="mt-10 bg-foreground bg-clip-text text-center text-[3rem] lg:text-[5.56rem] leading-none font-medium tracking-[-0.1rem] text-primary">
-          <span className="space-x-3">
-            {titleLine1.map((word, index) => (
-              <motion.span
-                key={index}
-                className="inline-block font-britti-sans"
-                initial={{ opacity: 0, filter: 'blur(8px)' }}
-                animate={{ opacity: 1, filter: 'blur(0px)' }}
-                transition={{ duration: wordDuration, delay: wordDelay * index, ease: 'easeOut' }}
-              >
-                {word}
-              </motion.span>
-            ))}
-          </span>
-          <br />
-          <span className="space-x-3">
-            {titleLine2.map((word, index) => (
-              <motion.span
-                key={index}
-                className="inline-block font-britti-sans"
-                initial={{ opacity: 0, filter: 'blur(8px)' }}
-                animate={{ opacity: 1, filter: 'blur(0px)' }}
-                transition={{
-                  duration: wordDuration,
-                  delay: wordDelay * (index + titleLine1.length),
-                  ease: 'easeOut',
-                }}
-              >
-                {word}
-              </motion.span>
-            ))}
-          </span>
+          {(() => {
+            let offset = 0;
+            return titleLines.map((line, lineIdx) => (
+              <span key={`line-${lineIdx}`} className="space-x-3">
+                {line.map((word, index) => (
+                  <motion.span
+                    key={`${lineIdx}-${index}`}
+                    className="inline-block font-britti-sans"
+                    initial={{ opacity: 0, filter: 'blur(8px)' }}
+                    animate={{ opacity: 1, filter: 'blur(0px)' }}
+                    transition={{
+                      duration: wordDuration,
+                      delay: wordDelay * (offset + index),
+                      ease: 'easeOut',
+                    }}
+                  >
+                    {word}
+                  </motion.span>
+                ))}
+                {((offset += line.length), null)}
+                <br />
+              </span>
+            ));
+          })()}
         </h1>
         <p className="mt-4 text-center">
           {subtitleWords.map((word, index) => (
