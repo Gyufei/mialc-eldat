@@ -84,8 +84,10 @@ export default function EvmWalletConnected({ size = 'lg' }: { size?: 'lg' | 'sm'
                 <div className={cn('flex items-center', size === 'sm' ? 'gap-1' : 'gap-[5px]')}>
                   <span className="truncate">EVM Wallet</span>
                   <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="pointer-events-auto text-tertiary z-20" />
+                    <TooltipTrigger asChild>
+                      <span className="pointer-events-auto inline-flex">
+                        <Info className="text-tertiary z-20" />
+                      </span>
                     </TooltipTrigger>
                     <TooltipContent
                       side="bottom"

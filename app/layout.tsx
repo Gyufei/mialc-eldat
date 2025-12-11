@@ -1,46 +1,24 @@
 import { CircleCheckIcon, InfoIcon, Loader2Icon, TriangleAlertIcon, XIcon } from 'lucide-react';
 import { Toaster } from 'sonner';
 
-
-
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-
-
 
 import CusPrivyProvider from './cus-privy-provider';
 import CusWagmiProvider from './cus-wagmi-provider';
-import { BrittiSans, CommitMono } from './font';
+import { BrittiSans, CommitMono, InterLocal } from './font';
 import './globals.css';
 import QueryClientProviders from './query-client';
 
-
-
-
-
-const inter = Inter({
-  variable: '--font-inter',
-  subsets: ['latin'],
-});
-
-const descriptionText = "Tadle claim portal prepares mind-blowingly generous Monad tokens (MON) and more Monad ecosystem project tokens here for builders and contributers.";
+const descriptionText =
+  'Tadle claim portal prepares mind-blowingly generous Monad tokens (MON) and more Monad ecosystem project tokens here for builders and contributers.';
 
 export const metadata: Metadata = {
   title: 'Tadle Claim Portal',
-  description:
-    descriptionText,
+  description: descriptionText,
   authors: [{ name: 'Tadle Foundation' }],
   creator: 'Tadle Foundation',
   publisher: 'Tadle Foundation',
-  keywords: [
-    'Tadle',
-    'Monad',
-    'Monad Testnet',
-    'parallel sandbox',
-    'airdrop',
-    'crypto',
-    'claim',
-  ],
+  keywords: ['Tadle', 'Monad', 'Monad Testnet', 'parallel sandbox', 'airdrop', 'crypto', 'claim'],
   robots: {
     index: true,
     follow: true,
@@ -54,8 +32,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'Tadle Claim Portal',
-    description:
-      descriptionText,
+    description: descriptionText,
     url: '/',
     siteName: 'Tadle Claim Portal',
     images: [
@@ -74,8 +51,7 @@ export const metadata: Metadata = {
     site: '@tadle_com',
     creator: '@tadle_com',
     title: 'Tadle Claim Portal',
-    description:
-      descriptionText,
+    description: descriptionText,
     images: ['/opengraph-image.jpg'],
   },
   icons: {
@@ -98,7 +74,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" style={{ colorScheme: 'dark' }}>
       <body
-        className={`${inter.variable} ${BrittiSans.variable} ${CommitMono.variable} antialiased`}
+        className={`${BrittiSans.variable} ${CommitMono.variable} ${InterLocal.variable} antialiased`}
       >
         <CusPrivyProvider>
           <CusWagmiProvider>
@@ -124,11 +100,11 @@ export default function RootLayout({
             closeButton: false,
           }}
           icons={{
-            loading: <Loader2Icon size="sm" className="border-brand-monad-purple-600-a11y-btn" />,
-            success: <CircleCheckIcon size="sm" className="size-4 text-green-500 " />,
-            info: <InfoIcon size="sm" className="size-4 text-[#836EF9]" />,
-            warning: <TriangleAlertIcon size="sm" className="size-4 text-yellow-500" />,
-            error: <XIcon size="sm" className="size-4 text-red-500" />,
+            loading: <Loader2Icon className="size-4 border-brand-monad-purple-600-a11y-btn" />,
+            success: <CircleCheckIcon className="size-4 text-green-500 " />,
+            info: <InfoIcon className="size-4 text-[#836EF9]" />,
+            warning: <TriangleAlertIcon className="size-4 text-yellow-500" />,
+            error: <XIcon className="size-4 text-red-500" />,
           }}
           style={
             {

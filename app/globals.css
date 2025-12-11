@@ -170,6 +170,9 @@
 }
 
 @layer components {
+  .font-inter {
+    font-family: var(--font-inter), var(--font-britti-sans), sans-serif;
+  }
   .bg-radial-primary {
     background:
       radial-gradient(50% 50% at 50% 50%, #6e54ff00 0, #ffffff1f 100%),

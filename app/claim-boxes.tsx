@@ -1725,7 +1725,7 @@ export default function ClaimBoxes() {
                     }}
                   >
                     {isMobile || (!isRecording && !isConverting) ? (
-                      <Download size="sm" color="#fff" className="size-4 relative z-10" />
+                      <Download color="#fff" className="size-4 relative z-10" />
                     ) : (
                       <Loader className="size-4 animate-spin" color="#fff" />
                     )}
