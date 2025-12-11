@@ -25,8 +25,7 @@ module.exports = {
       "'self'",
       'https://challenges.cloudflare.com',
       'https://auth.privy.io',
-      // 中文注释：开发/预览环境放宽内联脚本以兼容 Next dev 的内联脚本
-      !isProduction && "'unsafe-inline'",
+      "'unsafe-inline'",
     ]
       .filter(Boolean)
       .join(' ');
