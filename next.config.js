@@ -16,6 +16,8 @@ module.exports = {
       'https://*.rpc.privy.systems',
       'https://explorer-api.walletconnect.com',
       'https://cdn.tadle.com',
+      'https://static.cloudflareinsights.com',
+      'https://cloudflareinsights.com',
       'https://vercel.live',
       isProduction ? ProdHost : DevHost,
     ]
@@ -26,6 +28,8 @@ module.exports = {
       "'self'",
       'https://challenges.cloudflare.com',
       'https://auth.privy.io',
+      'https://static.cloudflareinsights.com',
+      'https://cloudflareinsights.com',
       'https://vercel.live',
       "'unsafe-inline'",
     ]
@@ -44,7 +48,7 @@ module.exports = {
       "form-action 'self'",
       "frame-ancestors 'none'",
       'child-src https://auth.privy.io https://verify.walletconnect.com https://verify.walletconnect.org https://oauth.telegram.org',
-      'frame-src https://auth.privy.io https://verify.walletconnect.com https://verify.walletconnect.org https://challenges.cloudflare.com https://oauth.telegram.org',
+      'frame-src https://auth.privy.io https://verify.walletconnect.com https://verify.walletconnect.org https://challenges.cloudflare.com https://oauth.telegram.org https://vercel.live',
       `connect-src ${connectSrc}`,
       "worker-src 'self'",
       "manifest-src 'self'",
