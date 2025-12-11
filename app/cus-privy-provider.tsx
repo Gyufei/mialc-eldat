@@ -5,9 +5,8 @@ import { PrivyProvider } from '@privy-io/react-auth';
 import { isProduction } from '@/lib/api-path';
 
 export const PRIVY_APP_ID =
-  process.env.NEXT_PUBLIC_PRIVY_APP_ID || isProduction
-    ? 'cmi5tijs501zok10cgqzneakt'
-    : 'cmhlr7b9p00uslc0cq25fjedn';
+  process.env.NEXT_PUBLIC_PRIVY_APP_ID ||
+  (isProduction ? 'cmi5tijs501zok10cgqzneakt' : 'cmhlr7b9p00uslc0cq25fjedn');
 
 export default function CusPrivyProvider({ children }: { children: React.ReactNode }) {
   return (
