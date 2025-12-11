@@ -23,23 +23,23 @@ const inter = Inter({
   subsets: ['latin'],
 });
 
+const descriptionText = "Tadle claim portal prepares mind-blowingly generous Monad tokens (MON) and more Monad ecosystem project tokens here for builders and contributers.";
+
 export const metadata: Metadata = {
   title: 'Tadle Claim Portal',
   description:
-    "Official Tadle airdrop claim. Connect your crypto wallet and web3 social accounts to see if you're eligible for rewards.",
+    descriptionText,
   authors: [{ name: 'Tadle Foundation' }],
   creator: 'Tadle Foundation',
   publisher: 'Tadle Foundation',
   keywords: [
     'Tadle',
     'Monad',
-    'blockchain',
+    'Monad Testnet',
+    'parallel sandbox',
+    'airdrop',
     'crypto',
     'claim',
-    'rewards',
-    'wallet',
-    'web3',
-    'ethereum',
   ],
   robots: {
     index: true,
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Tadle Claim Portal',
     description:
-      "Official Tadle airdrop claim. Connect your crypto wallet and web3 social accounts to see if you're eligible for rewards.",
+      descriptionText,
     url: '/',
     siteName: 'Tadle Claim Portal',
     images: [
@@ -71,11 +71,11 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    site: '@tadle',
-    creator: '@tadle',
+    site: '@tadle_com',
+    creator: '@tadle_com',
     title: 'Tadle Claim Portal',
     description:
-      "Official Tadle airdrop claim. Connect your crypto wallet and web3 social accounts to see if you're eligible for rewards.",
+      descriptionText,
     images: ['/opengraph-image.jpg'],
   },
   icons: {

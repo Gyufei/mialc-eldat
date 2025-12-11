@@ -1,60 +1,32 @@
 [
   {
     "id": 0,
-    "question": "How do I check if I am eligible for the MON airdrop?",
-    "answer": "Connect your wallets and accounts to reveal their eligibility status. Each eligible wallet and account adds to your claim strength."
+    "question": "How do I check if I am eligible for the MON & TLE airdrop?",
+    "answer": "Connect your crypto wallets and social accounts to reveal their eligibility status."
   },
   {
     "id": 1,
-    "question": "How does claim strength work?",
-    "answer": "Each eligible wallet and account connected to the claim portal adds to your claim strength. Your claim strength is indicative of the size of your airdrop. Your token allocation per eligible identifier doesn't change regardless of your strength level."
+    "question": "Is Monad testnet user eligible?",
+    "answer": "Absolutely! Monad testnet users who did interactions with Tadle are eligible for the MON & TLE airdrop. Make sure to connect your wallet to the claim portal to check your eligibility."
   },
   {
     "id": 2,
-    "question": "Who is eligible?",
-    "answer": "Individuals of all sorts are eligible including members of the Monad community, Monad builders, onchain users and the broader crypto community. Eligible connections include EVM wallets, SVM wallets, X accounts, email addresses, Discord accounts, Telegram accounts and Farcaster accounts. You can read more about eligibility criteria at",
-    "linkUrl": "https://blog.monad.xyz/blog/the-mon-airdrop"
+    "question": "Is too late to do contribution to Tadle to be eligible for the airdrop?",
+    "answer": "Nope. Tadle is continuously rewarding true contributors. Stay tuned for more details on upcoming seasons to earn incentives. Still early days!"
   },
   {
     "id": 3,
-    "question": "Is my progress saved if I leave the claim?",
-    "answer": "Yes. Changes save automatically. You can come back to this page and connect other wallets and accounts until the end of the claim period."
+    "question": "Why can’t I claim these revealed tokens?",
+    "answer": "As you see on Claim Portal, it’s Reveal period now. The Claim Period will start one month after Tadle’s TGE. After that, you will be able to claim your incentives."
   },
   {
     "id": 4,
-    "question": "When does the claim period end?",
-    "answer": "The claim period ends on 2025-11-07, Eligible wallets and accounts which are not connected by such date will forfeit the ability to claim allocations in respect of those wallets or accounts."
+    "question": "When does the Claim Period end?",
+    "answer": "The Claim Period ends one month after Tadle’s TGE and then you can claim the incentives. Take your time!"
   },
   {
     "id": 5,
-    "question": "When will my allocation be revealed?",
-    "answer": "Your allocation will be revealed when the claim period ends on 2025-11-07, Users also have the option to reveal early, starting on 2025-11-07."
-  },
-  {
-    "id": 6,
-    "question": "When is the early reveal?",
-    "answer": "Early reveal begins on 2025-11-07, for users who choose to participate. Participation in the early reveal is optional and does not impact your airdrop allocation."
-  },
-  {
-    "id": 7,
-    "question": "Can I add more connections after revealing my allocation?",
-    "answer": "No. If you have more wallets or socials that are eligible, they will have to be used on a new account."
-  },
-  {
-    "id": 8,
-    "question": "Can I change my claim wallet after revealing my allocation?",
-    "answer": "Yes. You can change your claim wallet until the claim closes on Nov 3rd at 13:00 UTC."
-  },
-  {
-    "id": 9,
-    "question": "How do I claim my MON on Monad Mainnet?",
-    "answer": "Your MON tokens will be sent to your claim wallet immediately when Monad Mainnet launches. Initially, your claim wallet is the wallet you connected when you first entered the claim portal. You may change this by connecting a different EVM-compatible wallet in the upper right corner of this page at any time prior to the end of the claim period."
-  },
-  {
-    "id": 10,
-    "question": "What if my wallets are split across multiple devices?",
-    "answer": "You can complete the claim on each device separately. It will not affect your total claim strength."
+    "question": "What’re these seasons?",
+    "answer": "Season 1 for Monad testnet users. Season 2 & 3 for Tadle mainnet users. Stay tuned!"
   }
 ]
-
-

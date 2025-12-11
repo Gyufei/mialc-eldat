@@ -12,9 +12,9 @@ export default function Login({
   isLogging: boolean;
   onLoggingChange: (bool: boolean) => void;
 }) {
-  const titleLine1 = ['Enter', 'the', 'Tadle'];
-  const titleLine2 = ['Claim', 'Portal'];
-  const subtitleWords = ['Create', 'an', 'account', 'to', 'discover', 'your', 'status'];
+  const titleLine1 = ['Tadle', 'offers', 'insane', 'incentives'];
+  const titleLine2 = ['for', 'every', 'true','contributor'];
+  const subtitleWords = ['Connect', 'your', 'accounts', 'to', 'claim', 'your', 'incentives'];
   const wordDuration = 0.4;
   const wordDelay = 0.2;
   const lastEndTitle1 = (titleLine1.length - 1) * wordDelay + wordDuration;
