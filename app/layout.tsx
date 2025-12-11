@@ -60,10 +60,10 @@ export const metadata: Metadata = {
     siteName: 'Tadle Claim Portal',
     images: [
       {
-        url: '/opengraph-image.jpg?8711bfc4e8de7a39',
+        url: '/opengraph-image.jpg?8711bfc4e8de7a38',
         width: 1200,
         height: 630,
-        type: 'image/jpeg',
+        type: 'image/jpg',
       },
     ],
     type: 'website',
