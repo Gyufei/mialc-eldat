@@ -81,9 +81,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [{ url: '/favicon.ico', sizes: '48x48', type: 'image/x-icon' }, { url: '/favicon.ico' }],
   },
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL ?? 'https://claim.tadle.com',
-  ),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://claim.tadle.com'),
 };
 
 export default function RootLayout({
