@@ -1558,6 +1558,7 @@ export default function ClaimBoxes() {
                   onSelectSeason={() => setSelectedSeasonIndex(index + 1)}
                   totalWeeks={8}
                   currentWeek={currentWeek}
+                  availableCount={initWeek}
                   onChangeCurrentWeek={handleChangeCurrentWeek}
                 />
               </Fragment>
@@ -1700,7 +1701,9 @@ export default function ClaimBoxes() {
                 <div className="flex gap-2 sm:gap-4">
                   <Button
                     onClick={() => {
-                      const e = encodeURIComponent(`I just received a testnet airdrop 🪂 of  ${onOpeningBox?.amount} $${onOpeningBox?.asset} from @tadle_com!`);
+                      const e = encodeURIComponent(
+                        `I just received a testnet airdrop 🪂 of  ${onOpeningBox?.amount} $${onOpeningBox?.asset} from @tadle_com!`,
+                      );
                       window.open('https://twitter.com/intent/tweet?text='.concat(e), '_blank');
                     }}
                     className="bg-black text-white hover:bg-black/80 flex-1 max-w-45 flex flex-row gap-2 items-center"
