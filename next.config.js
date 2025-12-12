@@ -16,6 +16,8 @@ module.exports = {
       'https://*.rpc.privy.systems',
       'https://explorer-api.walletconnect.com',
       'https://cdn.tadle.com',
+      'https://unpkg.com',
+      'https://cdn.jsdelivr.net',
       'https://static.cloudflareinsights.com',
       'https://cloudflareinsights.com',
       'https://vercel.live',
@@ -28,9 +30,12 @@ module.exports = {
       "'self'",
       'https://challenges.cloudflare.com',
       'https://auth.privy.io',
+      'https://unpkg.com',
+      'https://cdn.jsdelivr.net',
       'https://static.cloudflareinsights.com',
       'https://cloudflareinsights.com',
       'https://vercel.live',
+      "'wasm-unsafe-eval'",
       "'unsafe-inline'",
     ]
       .filter(Boolean)
