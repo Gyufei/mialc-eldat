@@ -1,4 +1,4 @@
-import { useLogin, usePrivy } from '@privy-io/react-auth';
+import { useLogin, usePrivy, Captcha } from '@privy-io/react-auth';
 import { motion } from 'framer-motion';
 
 import { useEffect, useRef } from 'react';
@@ -194,6 +194,7 @@ export default function Login({
               {isLogging ? 'Signing in...' : 'Sign in'}
             </span>
           </button>
+          <Captcha />
         </motion.div>
       </div>
     </main>
