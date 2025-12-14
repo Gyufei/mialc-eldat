@@ -1,7 +1,7 @@
-import { useLogin, usePrivy, Captcha } from '@privy-io/react-auth';
+import { Captcha, useLogin, usePrivy } from '@privy-io/react-auth';
 import { motion } from 'framer-motion';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import Image from 'next/image';
 
@@ -32,12 +32,24 @@ export default function Login({
   const video1Ref = useRef<HTMLVideoElement>(null);
   const video2Ref = useRef<HTMLVideoElement>(null);
 
+  // 登录按钮门槛与冷却：要求人机验证通过后才可点击，并在一次登录后进入短暂冷却
+  const [captchaPassed, setCaptchaPassed] = useState(false);
+  const [cooldownSec, setCooldownSec] = useState(0);
+
+  useEffect(() => {
+    if (cooldownSec <= 0) return;
+    const timer = setInterval(() => setCooldownSec((s) => (s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(timer);
+  }, [cooldownSec]);
+
   async function handleLogin() {
+    if (!captchaPassed || cooldownSec > 0) return;
     onLoggingChange(true);
     await login({
       walletChainType: 'ethereum-only',
       loginMethods: ['wallet'],
     });
+    setCooldownSec(10);
   }
 
   function handleVideo2Play() {
@@ -189,12 +201,23 @@ export default function Login({
           <button
             onClick={handleLogin}
             className="inline-flex items-center justify-center gap-2 whitespace-nowrap focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer font-britti-sans transition-all duration-200 active:scale-[0.98] disabled:active:scale-100 relative text-white text-sm font-medium leading-5 rounded-full bg-radial-primary [&>*]:relative [&>*]:z-10 h-9.5 px-4 py-2 shadow-login-button"
+            disabled={!captchaPassed || cooldownSec > 0}
           >
             <span className="w-full flex items-center justify-center gap-2">
-              {isLogging ? 'Signing in...' : 'Sign in'}
+              {isLogging
+                ? 'Signing in...'
+                : cooldownSec > 0
+                  ? `Retry in ${cooldownSec}s`
+                  : !captchaPassed
+                    ? 'Complete verification'
+                    : 'Sign in'}
             </span>
           </button>
-          <Captcha />
+          <Captcha
+            onSuccess={(token: string) => setCaptchaPassed(!!token)}
+            onExpire={() => setCaptchaPassed(false)}
+            onError={() => setCaptchaPassed(false)}
+          />
         </motion.div>
       </div>
     </main>
