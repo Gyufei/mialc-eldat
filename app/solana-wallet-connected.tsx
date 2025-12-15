@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 
+import { trackEnhancedEvent } from '@/lib/analytics/enhanced-analytics';
 import { isMultiWalletEnabled } from '@/lib/constants';
 import { cn, fmtAddr } from '@/lib/utils';
 
@@ -25,11 +26,36 @@ export default function SolanaWalletConnected({ size = 'lg' }: { size?: 'lg' | '
   const isNoWallet = solanaWallets?.length === 0;
   const isFullWallet = solanaWallets?.length === 8;
 
-  function handleLinkWallet() {
-    linkWallet({
-      walletChainType: 'solana-only',
-    });
-    setIsOpen(false);
+  /**
+   * 处理 Solana 钱包连接逻辑并上报 GA 事件
+   * 说明：
+   * - 调用 Privy 的 `linkWallet` 进行钱包连接（Solana-only）
+   * - 连接成功后，向 GA 上报 `WALLET_CONNECT` 事件
+   * - 包含 `include_user_id: true` 以采集 IP、指纹、Cloudflare Visitor ID 等识别信息
+   * - 设置事件标签为 `solana`，账户类型按 EOA 处理
+   */
+  async function handleLinkWallet() {
+    try {
+      const wallet = (await linkWallet({
+        walletChainType: 'solana-only',
+      })) as Partial<WalletWithMetadata> | undefined;
+
+      const address = wallet?.address;
+      if (address) {
+        await trackEnhancedEvent('WALLET_CONNECT', {
+          event_category: 'wallet',
+          event_label: 'solana',
+          account_type: 'EOA',
+          wallet_address: address,
+          include_user_id: true,
+          custom_parameters: {
+            wallet_address_short: address.slice(0, 6) + '...' + address.slice(-4),
+          },
+        });
+      }
+    } finally {
+      setIsOpen(false);
+    }
   }
 
   function handleOpen() {
@@ -96,7 +122,9 @@ export default function SolanaWalletConnected({ size = 'lg' }: { size?: 'lg' | '
                     <span>Not Connected</span>
                   ) : (
                     <>
-                      <span>{solanaWallets?.length}/{isMultiWalletEnabled ? 8 : 1} connected</span>
+                      <span>
+                        {solanaWallets?.length}/{isMultiWalletEnabled ? 8 : 1} connected
+                      </span>
                       <ChevronDown
                         className={cn('w-4 h-4 transition-transform', isOpen ? 'rotate-180' : '')}
                       />

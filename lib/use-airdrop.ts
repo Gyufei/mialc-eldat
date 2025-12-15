@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { ApiPath } from './api-path';
 import { Fetcher } from './fetcher';
+import { trackEnhancedEvent } from './analytics/enhanced-analytics';
 
 export type AirDropData = {
   boxes: AirDropBox[];
@@ -71,6 +72,32 @@ export default function useAirdrop() {
       });
       return res;
     } catch (error) {
+      /**
+       * 接口失败 GA 上报
+       * 说明：
+       * - 当请求失败时，上报 `ERROR_OCCURRED` 事件，类别为 `api`
+       * - 携带接口地址、状态码、错误信息与匿名钱包信息
+       */
+      try {
+        const status = (error as { status?: number })?.status;
+        const message = error instanceof Error ? error.message : String(error);
+        await trackEnhancedEvent('ERROR_OCCURRED', {
+          event_category: 'api',
+          event_label: 'airdrop_fetch_failed',
+          include_user_id: true,
+          wallet_address: wallet,
+          custom_parameters: {
+            endpoint: ApiPath.airdrop,
+            status_code: status ?? 'unknown',
+            error_message: message,
+            wallet_short:
+              wallet && wallet.length > 10
+                ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}`
+                : wallet || 'none',
+          },
+        });
+      } catch {}
+
       if (error instanceof Error && error.message === UNAUTHORIZED_MESSAGE) {
         logout();
       }

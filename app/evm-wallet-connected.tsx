@@ -6,6 +6,7 @@ import { useMemo, useState } from 'react';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
+import { trackEnhancedEvent } from '@/lib/analytics/enhanced-analytics';
 import { isMultiWalletEnabled } from '@/lib/constants';
 import { cn, fmtAddr } from '@/lib/utils';
 
@@ -26,11 +27,36 @@ export default function EvmWalletConnected({ size = 'lg' }: { size?: 'lg' | 'sm'
   const isNoWallet = evmWallets?.length === 0;
   const isFullWallet = evmWallets?.length === 8;
 
-  function handleLinkWallet() {
-    linkWallet({
-      walletChainType: 'ethereum-only',
-    });
-    setIsOpen(false);
+  /**
+   * 处理 EVM 钱包连接逻辑并上报 GA 事件
+   * 说明：
+   * - 调用 Privy 的 `linkWallet` 进行钱包连接
+   * - 连接成功后，向 GA 上报 `WALLET_CONNECT` 事件
+   * - 包含 `include_user_id: true` 以采集 IP、指纹、Cloudflare Visitor ID 等识别信息
+   * - 事件参数中会匿名化钱包地址（短地址形式），并携带账户类型与标签
+   */
+  async function handleLinkWallet() {
+    try {
+      const wallet = (await linkWallet({
+        walletChainType: 'ethereum-only',
+      })) as Partial<WalletWithMetadata> | undefined;
+
+      const address = wallet?.address;
+      if (address) {
+        await trackEnhancedEvent('WALLET_CONNECT', {
+          event_category: 'wallet',
+          event_label: 'unknown',
+          account_type: 'EOA',
+          wallet_address: address,
+          include_user_id: true,
+          custom_parameters: {
+            wallet_address_short: address.slice(0, 6) + '...' + address.slice(-4),
+          },
+        });
+      }
+    } finally {
+      setIsOpen(false);
+    }
   }
 
   function handleOpen() {
@@ -118,7 +144,9 @@ export default function EvmWalletConnected({ size = 'lg' }: { size?: 'lg' | 'sm'
                     <span>Not Connected</span>
                   ) : (
                     <>
-                      <span>{evmWallets?.length}/{isMultiWalletEnabled ? 8 : 1} connected</span>
+                      <span>
+                        {evmWallets?.length}/{isMultiWalletEnabled ? 8 : 1} connected
+                      </span>
                       <ChevronDown
                         className={cn('w-4 h-4 transition-transform', isOpen ? 'rotate-180' : '')}
                       />

@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/carousel';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
+import { trackEnhancedEvent } from '@/lib/analytics/enhanced-analytics';
 import {
   assessDevicePerformance,
   shouldDiscourageDownload,
@@ -718,12 +719,55 @@ export default function ClaimBoxes() {
         console.error(error);
         setIsRecording(false);
         toast.error('error when recording video');
+        try {
+          trackEnhancedEvent('VIDEO_DOWNLOAD', {
+            event_category: 'airdrop',
+            event_label: 'error_recording',
+            include_user_id: true,
+            custom_parameters: { message: String((error as Error)?.message || error) },
+          });
+        } catch {}
       }
     },
     [isMobile],
   );
 
+  /**
+   * 处理分享并上报 GA 事件
+   */
+  const handleShare = () => {
+    try {
+      trackEnhancedEvent('SHARE_CLICK', {
+        event_category: 'airdrop',
+        event_label: 'twitter',
+        include_user_id: true,
+        custom_parameters: {
+          amount: onOpeningBox?.amount,
+          asset: onOpeningBox?.asset,
+        },
+      });
+    } catch {}
+    const e = encodeURIComponent(
+      `I just received a testnet airdrop 🪂 of  ${onOpeningBox?.amount} $${onOpeningBox?.asset} from @tadle_com!`,
+    );
+    window.open('https://twitter.com/intent/tweet?text='.concat(e), '_blank');
+  };
+
+  /**
+   * 处理下载揭示视频并上报 GA 事件
+   * 说明：
+   * - 在尝试下载、成功与失败时分别上报事件
+   * - 携带设备与进度信息，便于分析下载行为
+   */
   const handleDownloadVideo = async () => {
+    try {
+      await trackEnhancedEvent('VIDEO_DOWNLOAD', {
+        event_category: 'airdrop',
+        event_label: 'download_start',
+        include_user_id: true,
+        custom_parameters: { is_mobile: isMobile },
+      });
+    } catch {}
     // 如果正在下载，阻止重复点击
     if (isRecording || isConverting || downloadProgress > 0) {
       return;
@@ -734,6 +778,13 @@ export default function ClaimBoxes() {
       toast.warning(
         'Due to mobile performance limitations, please use a PC browser to download the video.',
       );
+      try {
+        await trackEnhancedEvent('VIDEO_DOWNLOAD', {
+          event_category: 'airdrop',
+          event_label: 'blocked_mobile',
+          include_user_id: true,
+        });
+      } catch {}
       return;
     }
 
@@ -748,12 +799,26 @@ export default function ClaimBoxes() {
       a.download = randomFileName;
       a.click();
       URL.revokeObjectURL(url);
+      try {
+        await trackEnhancedEvent('VIDEO_DOWNLOAD', {
+          event_category: 'airdrop',
+          event_label: 'success_cached',
+          include_user_id: true,
+        });
+      } catch {}
       return;
     }
 
     const blob = recordedBlobRef.current;
     if (!blob) {
       toast.error('video generation failed');
+      try {
+        await trackEnhancedEvent('VIDEO_DOWNLOAD', {
+          event_category: 'airdrop',
+          event_label: 'error_no_blob',
+          include_user_id: true,
+        });
+      } catch {}
       return;
     }
 
@@ -1501,13 +1566,38 @@ export default function ClaimBoxes() {
     }
   };
 
+  /**
+   * 处理点击盒子并上报 GA 事件
+   * 说明：
+   * - 上报 `BOX_CLICK` 事件，携带盒子ID等信息
+   * - 打开揭示弹窗，触发领取逻辑
+   */
   const handleOpenBox = (boxId: string) => {
+    try {
+      trackEnhancedEvent('BOX_CLICK', {
+        event_category: 'airdrop',
+        event_label: 'open',
+        include_user_id: true,
+        custom_parameters: { box_id: boxId },
+      });
+    } catch {}
     setOnOpeningBoxId(boxId);
     openReveal();
     claimBox({ boxId });
   };
 
+  /**
+   * 处理重播盒子动画并上报 GA 事件
+   */
   const handleReplayBox = (boxId: string) => {
+    try {
+      trackEnhancedEvent('BOX_CLICK', {
+        event_category: 'airdrop',
+        event_label: 'replay',
+        include_user_id: true,
+        custom_parameters: { box_id: boxId },
+      });
+    } catch {}
     setOnOpeningBoxId(boxId);
     openReveal();
   };
@@ -1700,12 +1790,7 @@ export default function ClaimBoxes() {
               <div className="flex flex-col items-center gap-3">
                 <div className="flex gap-2 sm:gap-4">
                   <Button
-                    onClick={() => {
-                      const e = encodeURIComponent(
-                        `I just received a testnet airdrop 🪂 of  ${onOpeningBox?.amount} $${onOpeningBox?.asset} from @tadle_com!`,
-                      );
-                      window.open('https://twitter.com/intent/tweet?text='.concat(e), '_blank');
-                    }}
+                    onClick={handleShare}
                     className="bg-black text-white hover:bg-black/80 flex-1 max-w-45 flex flex-row gap-2 items-center"
                   >
                     Share On

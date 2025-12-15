@@ -1,7 +1,10 @@
+import { GoogleAnalytics } from '@next/third-parties/google';
 import { CircleCheckIcon, InfoIcon, Loader2Icon, TriangleAlertIcon, XIcon } from 'lucide-react';
 import { Toaster } from 'sonner';
 
 import type { Metadata } from 'next';
+
+import { GA_ID } from '@/config/analytics-config';
 
 import CusPrivyProvider from './cus-privy-provider';
 import CusWagmiProvider from './cus-wagmi-provider';
@@ -114,6 +117,7 @@ export default function RootLayout({
             } as React.CSSProperties
           }
         />
+        {GA_ID && <GoogleAnalytics gaId={GA_ID} />}
       </body>
     </html>
   );

@@ -1,9 +1,12 @@
 import { Captcha, useLogin, usePrivy } from '@privy-io/react-auth';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 
 import { useEffect, useRef, useState } from 'react';
 
 import Image from 'next/image';
+
+import { trackEnhancedEvent } from '@/lib/analytics/enhanced-analytics';
 
 export default function Login({
   isLogging,
@@ -27,13 +30,50 @@ export default function Login({
   const buttonDelay = Math.max(lastEndTitle, lastEndSubtitle) + 0.2;
 
   const { authenticated } = usePrivy();
-  const { login } = useLogin();
+  const { login } = useLogin({
+    /**
+     * 登录完成回调并上报 GA 事件
+     * 说明：
+     * - 成功登录后上报 `LOGIN` 事件，携带用户识别信息
+     * - 记录登录方式、是否新用户等信息便于分析
+     */
+    onComplete: async ({ user, isNewUser, wasAlreadyAuthenticated, loginMethod }) => {
+      try {
+        await trackEnhancedEvent('LOGIN', {
+          event_category: 'auth',
+          event_label: 'success',
+          wallet_address: user?.wallet?.address,
+          include_user_id: true,
+          custom_parameters: {
+            is_new_user: !!isNewUser,
+            already_authenticated: !!wasAlreadyAuthenticated,
+            login_method: loginMethod || 'unknown',
+          },
+        });
+      } catch {}
+    },
+    /**
+     * 登录失败回调并上报 GA 事件
+     */
+    onError: async (error) => {
+      try {
+        await trackEnhancedEvent('LOGIN', {
+          event_category: 'auth',
+          event_label: 'error',
+          include_user_id: true,
+          custom_parameters: {
+            error_message: String(error),
+          },
+        });
+      } catch {}
+    },
+  });
 
   const video1Ref = useRef<HTMLVideoElement>(null);
   const video2Ref = useRef<HTMLVideoElement>(null);
 
   // 登录按钮门槛与冷却：要求人机验证通过后才可点击，并在一次登录后进入短暂冷却
-  const [captchaPassed, setCaptchaPassed] = useState(false);
+  const [_captchaPassed, setCaptchaPassed] = useState(false);
   const [cooldownSec, setCooldownSec] = useState(0);
 
   useEffect(() => {
@@ -42,14 +82,33 @@ export default function Login({
     return () => clearInterval(timer);
   }, [cooldownSec]);
 
+  /**
+   * 登录按钮点击处理
+   * 说明：
+   * - 不再以 `captchaPassed` 作为按钮禁用条件，Privy 的 Captcha 为“隐式挑战”，组件挂载即自动验证
+   * - 由 Privy SDK 在登录流程前进行预验证，如验证失败将抛出错误并阻止登录
+   * - 保留冷却时间，避免频繁触发登录行为
+   */
   async function handleLogin() {
-    if (!captchaPassed || cooldownSec > 0) return;
+    if (cooldownSec > 0) return;
     onLoggingChange(true);
-    await login({
-      walletChainType: 'ethereum-only',
-      loginMethods: ['wallet'],
-    });
-    setCooldownSec(10);
+    try {
+      // 登录入口点击上报
+      await trackEnhancedEvent('LOGIN', {
+        event_category: 'auth',
+        event_label: 'click',
+        include_user_id: true,
+      });
+      await login({
+        walletChainType: 'ethereum-only',
+        loginMethods: ['wallet'],
+      });
+      setCooldownSec(10);
+    } catch (_err) {
+      // 登录或验证失败，恢复按钮可用状态
+      toast.error('Login failed. Please try again.');
+      onLoggingChange(false);
+    }
   }
 
   function handleVideo2Play() {
@@ -201,22 +260,26 @@ export default function Login({
           <button
             onClick={handleLogin}
             className="inline-flex items-center justify-center gap-2 whitespace-nowrap focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer font-britti-sans transition-all duration-200 active:scale-[0.98] disabled:active:scale-100 relative text-white text-sm font-medium leading-5 rounded-full bg-radial-primary [&>*]:relative [&>*]:z-10 h-9.5 px-4 py-2 shadow-login-button"
-            disabled={!captchaPassed || cooldownSec > 0}
+            disabled={cooldownSec > 0}
           >
             <span className="w-full flex items-center justify-center gap-2">
               {isLogging
                 ? 'Signing in...'
                 : cooldownSec > 0
                   ? `Retry in ${cooldownSec}s`
-                  : !captchaPassed
-                    ? 'Complete verification'
-                    : 'Sign in'}
+                  : 'Sign in'}
             </span>
           </button>
           <Captcha
             onSuccess={(token: string) => setCaptchaPassed(!!token)}
-            onExpire={() => setCaptchaPassed(false)}
-            onError={() => setCaptchaPassed(false)}
+            onExpire={() => {
+              setCaptchaPassed(false);
+              toast.warning('Verification expired. Please try again.');
+            }}
+            onError={() => {
+              setCaptchaPassed(false);
+              toast.error('Verification failed. Please try again.');
+            }}
           />
         </motion.div>
       </div>

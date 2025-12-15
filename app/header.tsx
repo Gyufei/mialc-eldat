@@ -1,6 +1,7 @@
 'use client';
 
 import { usePrivy } from '@privy-io/react-auth';
+import { trackEnhancedEvent } from '@/lib/analytics/enhanced-analytics';
 import { CircleUser, LogOut } from 'lucide-react';
 
 import Image from 'next/image';
@@ -24,9 +25,29 @@ export default function Header() {
 
   const disableLogout = !ready || (ready && !authenticated);
 
+  /**
+   * 处理登出并上报 GA 事件
+   * 说明：
+   * - 点击时上报一次登出入口事件
+   * - 成功执行后上报登出成功事件，便于追踪用户行为
+   */
   async function handleLogout() {
     if (disableLogout) return;
-    await logout();
+    try {
+      await trackEnhancedEvent('LOGOUT', {
+        event_category: 'auth',
+        event_label: 'click',
+        include_user_id: true,
+        wallet_address: user?.wallet?.address,
+      });
+      await logout();
+      await trackEnhancedEvent('LOGOUT', {
+        event_category: 'auth',
+        event_label: 'success',
+        include_user_id: true,
+        wallet_address: user?.wallet?.address,
+      });
+    } catch {}
   }
 
   const userWallet = user?.wallet?.address;
