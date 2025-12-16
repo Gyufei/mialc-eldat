@@ -1,7 +1,6 @@
 'use client';
 
-import { usePrivy } from '@privy-io/react-auth';
-import { trackEnhancedEvent } from '@/lib/analytics/enhanced-analytics';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { CircleUser, LogOut } from 'lucide-react';
 
 import Image from 'next/image';
@@ -16,12 +15,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
+import { trackEnhancedEvent } from '@/lib/analytics/enhanced-analytics';
 import { fmtAddr } from '@/lib/utils';
 
 import CusChevronDown from './icon/chevron-down';
 
 export default function Header() {
   const { ready, authenticated, logout, user } = usePrivy();
+  const { wallets } = useWallets();
 
   const disableLogout = !ready || (ready && !authenticated);
 
@@ -29,6 +30,7 @@ export default function Header() {
    * 处理登出并上报 GA 事件
    * 说明：
    * - 点击时上报一次登出入口事件
+   * - 首先主动断开当前网页与外部钱包的连接（ WalletConnect会向手机端推送断开信号），
    * - 成功执行后上报登出成功事件，便于追踪用户行为
    */
   async function handleLogout() {
@@ -40,6 +42,14 @@ export default function Header() {
         include_user_id: true,
         wallet_address: user?.wallet?.address,
       });
+      // 主动断开所有“已连接的钱包”的会话，以确保手机端也同步断开
+      // - ConnectedWallet.disconnect(): 对 WalletConnect 等支持断开的客户端会发起会话终止
+      // - 对不支持编程断开的客户端（如部分注入钱包）此调用将安全地 no-op
+      try {
+        for (const w of wallets || []) {
+          w.disconnect?.();
+        }
+      } catch {}
       await logout();
       await trackEnhancedEvent('LOGOUT', {
         event_category: 'auth',
