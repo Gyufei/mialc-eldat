@@ -1046,6 +1046,16 @@ export default function ClaimBoxes() {
           recordedBlobRef.current = null;
         }
 
+        // 首次下载成功 GA 上报（无缓存路径，可能不含音频）
+        try {
+          await trackEnhancedEvent('VIDEO_DOWNLOAD', {
+            event_category: 'airdrop',
+            event_label: 'success',
+            include_user_id: true,
+            custom_parameters: { with_audio: false, cached: false },
+          });
+        } catch {}
+
         return;
       }
 
@@ -1403,6 +1413,16 @@ export default function ClaimBoxes() {
           recordedBlobRef.current = null;
         }
 
+        // 首次下载成功 GA 上报（合并音频成功路径）
+        try {
+          await trackEnhancedEvent('VIDEO_DOWNLOAD', {
+            event_category: 'airdrop',
+            event_label: 'success',
+            include_user_id: true,
+            custom_parameters: { with_audio: true, cached: false },
+          });
+        } catch {}
+
         return; // 成功完成，直接返回
       } catch (error) {
         console.warn('Audio merge failed, falling back to video-only download:', error);
@@ -1535,6 +1555,18 @@ export default function ClaimBoxes() {
             recordedChunksRef.current = [];
             recordedBlobRef.current = null;
           }
+
+          // 首次下载成功 GA 上报（回退视频仅下载路径）
+          try {
+            await trackEnhancedEvent('VIDEO_DOWNLOAD', {
+              event_category: 'airdrop',
+              event_label: 'success',
+              include_user_id: true,
+              custom_parameters: { with_audio: false, cached: false, fallback: true },
+            });
+          } catch {}
+
+          return;
         } catch (fallbackError) {
           console.error('Fallback video conversion also failed:', fallbackError);
           // 清理资源

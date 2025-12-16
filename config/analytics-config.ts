@@ -15,7 +15,7 @@ const getGoogleAnalyticsId = () => {
   if (isProduction) {
     return 'G-R5YV691RBP'; // 生产环境GA ID
   } else {
-    return 'G-SRJGWEFBQK'; // 开发/测试环境GA ID
+    return 'G-CYFQ6PE2Z5'; // 开发/测试环境GA ID
   }
 };
 
