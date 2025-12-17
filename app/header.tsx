@@ -3,6 +3,8 @@
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { CircleUser, LogOut } from 'lucide-react';
 
+import { useEffect } from 'react';
+
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -59,6 +61,55 @@ export default function Header() {
       });
     } catch {}
   }
+
+  /**
+   * 监听 WalletConnect 会话在“手机端主动断开”的场景
+   * 目标：当检测到网页端已无任何有效连接（所有钱包 `isConnected() === false`）时，自动登出并清理缓存
+   * 说明：
+   * - WalletConnect 断开会触发 Privy Connector 更新，此处根据 `useWallets()` 的状态进行二次确认
+   * - 注入类钱包可能无法主动通知断开事件，若网页侧检测到全部断开，则执行登出与清理
+   */
+  useEffect(() => {
+    let cancelled = false;
+    const syncOnMobileDisconnect = async () => {
+      if (!ready || !authenticated) return;
+      try {
+        const list = wallets || [];
+        const loginAddress = (user?.wallet?.address || '').toLowerCase();
+        if (list.length === 0) {
+          // 已无任何钱包，视为连接已解除
+          await logout();
+          return;
+        }
+        const statuses = await Promise.all(list.map((w) => w.isConnected()));
+        const anyConnected = statuses.some(Boolean);
+        const loginIndex = loginAddress
+          ? list.findIndex((w) => (w.address || '').toLowerCase() === loginAddress)
+          : -1;
+        const loginConnected = loginIndex >= 0 ? !!statuses[loginIndex] : false;
+
+        // 若“当前登录地址对应的钱包”已被移除或断开，则级联断开剩余连接并登出
+        if ((!loginAddress || loginIndex === -1 || !loginConnected) && anyConnected && !cancelled) {
+          try {
+            for (const w of list) {
+              w.disconnect?.();
+            }
+          } catch {}
+          await logout();
+          return;
+        }
+
+        // 若全部断开，也执行登出与清理
+        if (!anyConnected && !cancelled) {
+          await logout();
+        }
+      } catch {}
+    };
+    syncOnMobileDisconnect();
+    return () => {
+      cancelled = true;
+    };
+  }, [wallets, ready, authenticated, logout, user?.wallet?.address]);
 
   const userWallet = user?.wallet?.address;
 
